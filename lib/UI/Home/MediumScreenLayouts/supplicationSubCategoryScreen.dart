@@ -1,17 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:hidaya_app/UI/Home/MediumScreenLayouts/supplicationMainScreen.dart';
 import '../../../Utils/colors.dart';
 import 'package:hidaya_app/Utils/DatabaseHelper.dart';
-import 'supplicationSubCategoryScreen.dart';
 
-class SupplicationScreen extends StatefulWidget {
-  const SupplicationScreen({super.key});
+class SupplicationSubCategoryScreen extends StatefulWidget {
+  final String category;
+
+  const SupplicationSubCategoryScreen({super.key, required this.category});
 
   @override
-  State<SupplicationScreen> createState() => _SupplicationScreenState();
+  State<SupplicationSubCategoryScreen> createState() => _SupplicationSubCategoryScreenState();
 }
 
-class _SupplicationScreenState extends State<SupplicationScreen> {
+class _SupplicationSubCategoryScreenState extends State<SupplicationSubCategoryScreen> {
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
@@ -26,7 +28,7 @@ class _SupplicationScreenState extends State<SupplicationScreen> {
           },
         ),
         title: Text(
-          'Supplication',
+          widget.category,
           style: GoogleFonts.poppins(
             color: Colors.white,
             fontSize: 20,
@@ -50,32 +52,32 @@ class _SupplicationScreenState extends State<SupplicationScreen> {
       ),
       backgroundColor: AppColors.background,
       body: FutureBuilder<List<Map<String, dynamic>>>(
-        future: DatabaseHelper.getSupplicationCategories(),
+        future: DatabaseHelper.getSupplicationSubCategories(widget.category),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           } else if (snapshot.hasError) {
             return Center(child: Text('Error: ${snapshot.error}'));
           } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(child: Text('No supplications found'));
+            return const Center(child: Text('No subcategories found'));
           }
 
-          final supplications = snapshot.data!;
+          final subcategories = snapshot.data!;
           return ListView.builder(
             padding: EdgeInsets.symmetric(
               vertical: screenHeight * 0.02,
               horizontal: screenWidth * 0.04,
             ),
-            itemCount: supplications.length,
+            itemCount: subcategories.length,
             itemBuilder: (context, index) {
-              final categoryData = supplications[index];
+              final subcategoryData = subcategories[index];
               return GestureDetector(
                 onTap: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => SupplicationSubCategoryScreen(
-                        category: categoryData['category'],
+                      builder: (context) => Supplicationmainscreen(
+                        subcategory: subcategoryData['subcategory'],
                       ),
                     ),
                   );
@@ -111,33 +113,12 @@ class _SupplicationScreenState extends State<SupplicationScreen> {
                                   crossAxisAlignment: CrossAxisAlignment.end,
                                   children: [
                                     Text(
-                                      categoryData['category'],
+                                      subcategoryData['subcategory'],
                                       style: GoogleFonts.poppins(
                                         fontSize: 16,
                                         fontWeight: FontWeight.w600,
                                         color: Colors.black,
                                       ),
-                                    ),
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.end,
-                                      children: [
-                                        Text(
-                                          'دعائیں ',
-                                          style: GoogleFonts.poppins(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w400,
-                                            color: Colors.black,
-                                          ),
-                                        ),
-                                        Text(
-                                          '${categoryData['total_supplications']}',
-                                          style: GoogleFonts.poppins(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w400,
-                                            color: Colors.black,
-                                          ),
-                                        ),
-                                      ],
                                     ),
                                   ],
                                 ),

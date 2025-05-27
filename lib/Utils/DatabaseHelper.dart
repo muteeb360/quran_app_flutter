@@ -26,6 +26,38 @@ class DatabaseHelper {
     return _database!;
   }
 
+  static Future<List<Map<String, dynamic>>> getSupplicationCategories() async {
+    final db = await database;
+    final result = await db.rawQuery('''
+      SELECT category, COUNT(*) as total_supplications 
+      FROM supplications 
+      GROUP BY category
+    ''');
+    return result;
+  }
+
+  static Future<List<Map<String, dynamic>>> getSupplicationSubCategories(String category) async {
+    final db = await database;
+    final result = await db.rawQuery('''
+      SELECT subcategory, COUNT(*) as total_supplications 
+      FROM supplications 
+      WHERE category = ?
+      GROUP BY subcategory
+    ''', [category]);
+    return result;
+  }
+
+  static Future<List<Map<String, dynamic>>> getSupplicationsBySubCategory(String subcategory) async {
+    final db = await database;
+    final result = await db.query(
+      'supplications',
+      columns: ['arabic', 'urdu', 'english', 'source'],
+      where: 'subcategory = ?',
+      whereArgs: [subcategory],
+    );
+    return result;
+  }
+
   static Future<Database> _initDatabaseWithRetry({int attempt = 1}) async {
     try {
       io.Directory documentsDirectory = await getApplicationDocumentsDirectory();
