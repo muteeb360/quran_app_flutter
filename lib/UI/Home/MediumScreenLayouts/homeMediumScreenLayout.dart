@@ -393,7 +393,7 @@ class _HomeMediumScreenLayoutState extends State<HomeMediumScreenLayout> {
 
     final List<Map<String, dynamic>> items = [
       {'image': 'assets/images/Prayer.png', 'text': 'Prayer Time'},
-      {'image': 'assets/images/Beads.png', 'text': 'Tasbeeh'},
+      {'image': 'assets/images/Quran_pdf.png', 'text': 'PDF Quran'},
       {'image': 'assets/images/qibla.png', 'text': 'Qibla'},
       {'image': 'assets/images/hand.png', 'text': 'Dua'},
       {'image': 'assets/images/Allah.png', 'text': 'Asma ul Husna'},

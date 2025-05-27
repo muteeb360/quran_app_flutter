@@ -95,15 +95,29 @@ class _SupplicationSubCategoryScreenState extends State<SupplicationSubCategoryS
                         child: Stack(
                           children: [
                             ClipRRect(
-                              borderRadius: const BorderRadius.horizontal(
-                                left: Radius.circular(15),
-                              ),
-                              child: Image.asset(
-                                'assets/images/prayer_bg.png',
-                                width: screenWidth * 0.7,
-                                height: screenHeight * 0.15,
-                                fit: BoxFit.cover,
-                              ),
+                                borderRadius: const BorderRadius.horizontal(
+                                  left: Radius.circular(10),
+                                ),
+                                child: Container(
+                                  width: screenWidth * 0.7,
+                                  height: screenHeight * 0.15,
+                                  decoration: const BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        Color(0xFF205B3A), // End color
+                                        Color(0xFF44C17B), // Start color
+                                      ],
+                                      begin: Alignment.centerLeft,
+                                      end: Alignment.centerRight,
+                                    ),
+                                  ),
+                                  child: Image.asset(
+                                    'assets/images/mosque_silhouette.png',
+                                    width: screenWidth * 0.7,
+                                    height: screenHeight * 0.15,
+                                    fit: BoxFit.cover,
+                                  ),
+                                )
                             ),
                             Positioned.fill(
                               child: Padding(
@@ -117,8 +131,29 @@ class _SupplicationSubCategoryScreenState extends State<SupplicationSubCategoryS
                                       style: GoogleFonts.poppins(
                                         fontSize: 16,
                                         fontWeight: FontWeight.w600,
-                                        color: Colors.black,
+                                        color: Colors.white,
                                       ),
+                                    ),
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.end,
+                                      children: [
+                                        Text(
+                                          'دعائیں ',
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w400,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                        Text(
+                                          '${subcategoryData['total_supplications']}',
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w400,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ],
                                 ),
