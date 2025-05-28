@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:async';
 import 'package:adhan_dart/adhan_dart.dart';
+import 'package:hidaya_app/UI/Home/MediumScreenLayouts/PDFQuran_firstscreen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:hidaya_app/Utils/DatabaseHelper.dart';
 import 'package:hidaya_app/Utils/QuranData.dart'; // Import QuranData
@@ -13,16 +14,6 @@ import 'asmaulhusnaScreen.dart';
 import 'nabinamesScreen.dart';
 import '../../../Utils/colors.dart';
 import '../../../Utils/location_manager.dart';
-
-class TasbeehScreen extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text('Tasbeeh')),
-      body: Center(child: Text('Tasbeeh Screen')),
-    );
-  }
-}
 
 class HomeMediumScreenLayout extends StatefulWidget {
   const HomeMediumScreenLayout({super.key});
@@ -310,8 +301,8 @@ class _HomeMediumScreenLayoutState extends State<HomeMediumScreenLayout> {
       case 'Prayer Time':
         Navigator.push(context, MaterialPageRoute(builder: (context) => MediumPrayerTimesScreen()));
         break;
-      case 'Tasbeeh':
-        Navigator.push(context, MaterialPageRoute(builder: (context) => TasbeehScreen()));
+      case 'PDF Quran':
+        Navigator.push(context, MaterialPageRoute(builder: (context) => PdfquranFirstscreen()));
         break;
       case 'Qibla':
         Navigator.push(context, MaterialPageRoute(builder: (context) => QiblaDirectionMediumScreen()));
