@@ -6,9 +6,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
+import 'package:flutter_pdfview/flutter_pdfview.dart';
 
-import '../../../Utils/colors.dart'; // Ensure this file defines AppColors.background
+import '../../../Utils/colors.dart'; // Ensure this file exists and defines AppColors.background
 
 class PdfquranFirstscreen extends StatefulWidget {
   const PdfquranFirstscreen({super.key});
@@ -137,7 +137,7 @@ class _PdfquranFirstscreenState extends State<PdfquranFirstscreen> {
   Widget build(BuildContext context) {
     final mediaQuery = MediaQuery.of(context);
     final screenWidth = mediaQuery.size.width;
-    final screenHeight = MediaQuery.of(context).size.height;
+    final screenHeight = mediaQuery.size.height;
 
     return Scaffold(
       appBar: AppBar(
@@ -404,18 +404,18 @@ class PDFViewerPage extends StatefulWidget {
 }
 
 class _PDFViewerPageState extends State<PDFViewerPage> {
-  final PdfViewerController _pdfController = PdfViewerController();
+  PDFViewController? _pdfController;
   int _currentPage = 0;
   int _totalPages = 0;
   final TextEditingController _searchController = TextEditingController();
   bool _showSearchBar = false;
 
-  // Surah to page mapping (0-based for RTL)
+  // Example Surah to page mapping (customize based on your PDF)
   final Map<String, int> _surahToPage = {
-    'الفاتحة': 0, // First page
-    'البقرة': 1, // Second page
-    'آل عمران': 49, // Adjust based on your PDF
-    // Add more Surahs
+    'Al-Fatihah': 1,
+    'Al-Baqarah': 2,
+    'Aal-E-Imran': 50,
+    // Add more Surahs and their starting pages
   };
 
   @override
@@ -427,11 +427,9 @@ class _PDFViewerPageState extends State<PDFViewerPage> {
   // Load last read page
   Future<void> _loadLastPage() async {
     final prefs = await SharedPreferences.getInstance();
-    final savedPage = prefs.getInt('${widget.fileName}_lastPage') ?? 0;
     setState(() {
-      _currentPage = savedPage;
+      _currentPage = prefs.getInt('${widget.fileName}_lastPage') ?? 0;
     });
-    _pdfController.jumpToPage(savedPage + 1); // SfPdfViewer uses 1-based indexing
   }
 
   // Save last read page
@@ -442,24 +440,44 @@ class _PDFViewerPageState extends State<PDFViewerPage> {
 
   // Search for a Surah
   void _searchSurah(String query) {
-    final surahPage = _surahToPage[query];
-    if (surahPage != null) {
-      _pdfController.jumpToPage(surahPage + 1); // 1-based for SfPdfViewer
+    final surah = _surahToPage[query];
+    if (surah != null) {
+      _pdfController?.setPage(surah);
       setState(() {
-        _currentPage = surahPage;
+        _currentPage = surah;
       });
-      _saveLastPage(surahPage);
+      _saveLastPage(surah);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('انتقل إلى $query', textDirection: TextDirection.rtl),
-        ),
+        SnackBar(content: Text('Navigated to $query')),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('لم يتم العثور على السورة', textDirection: TextDirection.rtl),
-        ),
+        SnackBar(content: Text('Surah not found')),
       );
+    }
+  }
+
+  // Handle swipe gestures
+  void _handleSwipe(DragEndDetails details) {
+    final velocity = details.primaryVelocity;
+    if (velocity != null) {
+      if (velocity < 0 && _currentPage > 0) {
+        // Swipe left: go to previous page
+        final newPage = _currentPage - 1;
+        _pdfController?.setPage(newPage);
+        setState(() {
+          _currentPage = newPage;
+        });
+        _saveLastPage(newPage);
+      } else if (velocity > 0 && _currentPage < _totalPages - 1) {
+        // Swipe right: go to next page
+        final newPage = _currentPage + 1;
+        _pdfController?.setPage(newPage);
+        setState(() {
+          _currentPage = newPage;
+        });
+        _saveLastPage(newPage);
+      }
     }
   }
 
@@ -506,82 +524,78 @@ class _PDFViewerPageState extends State<PDFViewerPage> {
           ),
         ],
       ),
-      body: Directionality(
-        textDirection: TextDirection.rtl,
-        child: Column(
-          children: [
-            if (_showSearchBar)
-              Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: TextField(
-                  controller: _searchController,
-                  textDirection: TextDirection.rtl,
-                  decoration: InputDecoration(
-                    hintText: 'ادخل اسم السورة (مثل: الفاتحة)',
-                    hintStyle: GoogleFonts.poppins(),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    suffixIcon: IconButton(
-                      icon: Icon(Icons.search),
-                      onPressed: () => _searchSurah(_searchController.text),
-                    ),
-                  ),
-                  onSubmitted: _searchSurah,
-                ),
-              ),
+      body: Column(
+        children: [
+          if (_showSearchBar)
             Padding(
               padding: const EdgeInsets.all(8.0),
-              child: Text(
-                'اضغط بإصبعين للتكبير/التصغير',
-                style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey[600]),
-                textDirection: TextDirection.rtl,
+              child: TextField(
+                controller: _searchController,
+                decoration: InputDecoration(
+                  hintText: 'Enter Surah name (e.g., Al-Fatihah)',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  suffixIcon: IconButton(
+                    icon: Icon(Icons.search),
+                    onPressed: () => _searchSurah(_searchController.text),
+                  ),
+                ),
+                onSubmitted: _searchSurah,
               ),
             ),
-            Expanded(
-              child: Stack(
-                children: [
-                  SfPdfViewer.file(
-                    File(widget.filePath),
-                    controller: _pdfController,
-                    scrollDirection: PdfScrollDirection.horizontal,
-                    pageLayoutMode: PdfPageLayoutMode.continuous, // RTL scrolling supported
-                    onDocumentLoaded: (details) {
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Text(
+              'Pinch to zoom in/out, swipe right for next page',
+              style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey[600]),
+            ),
+          ),
+          Expanded(
+            child: Stack(
+              children: [
+                GestureDetector(
+                  onHorizontalDragEnd: _handleSwipe,
+                  child: PDFView(
+                    filePath: widget.filePath,
+                    onViewCreated: (PDFViewController controller) async {
+                      _pdfController = controller;
+                      await _pdfController?.setPage(_currentPage);
+                      final total = await _pdfController?.getPageCount();
                       setState(() {
-                        _totalPages = details.document.pages.count;
+                        _totalPages = total ?? 0;
                       });
                     },
-                    onPageChanged: (details) {
+                    onPageChanged: (page, total) {
                       setState(() {
-                        _currentPage = details.newPageNumber - 1; // Convert to 0-based
+                        _currentPage = page ?? 0;
+                        _totalPages = total ?? 0;
                       });
                       _saveLastPage(_currentPage);
                     },
-                    onDocumentLoadFailed: (details) {
+                    onError: (error) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            'خطأ في تحميل الملف: ${details.description}',
-                            textDirection: TextDirection.rtl,
-                          ),
-                        ),
+                        SnackBar(content: Text('Error loading PDF: $error')),
                       );
                     },
+                    enableSwipe: false, // Disable default swipe handling
+                    swipeHorizontal: true,
+                    autoSpacing: true,
+                    pageFling: false, // Disable fling to simplify control
                   ),
-                  Positioned(
-                    bottom: 16,
-                    right: 16, // RTL alignment
-                    child: Text(
-                      'الصفحة: $_currentPage / ${_totalPages - 1}',
-                      style: GoogleFonts.poppins(fontSize: 16),
-                      textDirection: TextDirection.rtl,
-                    ),
+                ),
+                Positioned(
+                  bottom: 16,
+                  left: 16,
+                  child: Text(
+                    'Page: ${_currentPage + 1} / $_totalPages',
+                    style: GoogleFonts.poppins(fontSize: 16),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
