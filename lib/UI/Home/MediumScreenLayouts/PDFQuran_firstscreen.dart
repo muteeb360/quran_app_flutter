@@ -273,7 +273,7 @@ class _PdfquranFirstscreenState extends State<PdfquranFirstscreen> {
                       ),
                       image: DecorationImage(
                         image: AssetImage(imagePath),
-                        fit: BoxFit.contain,
+                        fit: BoxFit.cover,
                       ),
                     ),
                   ),
@@ -316,7 +316,7 @@ class _PdfquranFirstscreenState extends State<PdfquranFirstscreen> {
                               ),
                             ),
                             IconButton(
-                              icon: Icon(Icons.close, color: Colors.red),
+                              icon: Icon(Icons.cancel, color: Colors.red),
                               onPressed: onCancel,
                             ),
                           ],
@@ -407,14 +407,16 @@ class _PDFViewerPageState extends State<PDFViewerPage> {
   PDFViewController? _pdfController;
   int _currentPage = 0;
   int _totalPages = 0;
+  int? _lastReadPage; // Store last read page separately
   final TextEditingController _searchController = TextEditingController();
   bool _showSearchBar = false;
+  bool _isPageSet = false; // Flag to prevent multiple page sets
 
   // Example Surah to page mapping (customize based on your PDF)
   final Map<String, int> _surahToPage = {
     'Al-Fatihah': 1,
     'Al-Baqarah': 2,
-    'Aal-E-Imran': 50,
+    'Aal-E-Imran': 51,
     // Add more Surahs and their starting pages
   };
 
@@ -424,29 +426,58 @@ class _PDFViewerPageState extends State<PDFViewerPage> {
     _loadLastPage();
   }
 
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   // Load last read page
   Future<void> _loadLastPage() async {
     final prefs = await SharedPreferences.getInstance();
+    final lastPage = prefs.getInt('${widget.fileName}_lastPage') ?? 0;
     setState(() {
-      _currentPage = prefs.getInt('${widget.fileName}_lastPage') ?? 0;
+      _lastReadPage = lastPage;
+      _currentPage = 0; // Start at page 0 until navigation succeeds
     });
+    if (lastPage > 0) {
+      // Show SnackBar with Resume action
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Last read: page ${lastPage + 1}'),
+            duration: Duration(seconds: 5),
+            action: SnackBarAction(
+              label: 'Resume',
+              onPressed: () => _navigateToPage(lastPage, showSnackBar: true),
+            ),
+          ),
+        );
+      });
+      // Attempt navigation after a delay to mimic user interaction timing
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        await Future.delayed(Duration(seconds: 2)); // Increased delay for stability
+        if (mounted && !_isPageSet && _lastReadPage != null) {
+          await _navigateToPage(_lastReadPage!, showSnackBar: true);
+        }
+      });
+    }
   }
 
   // Save last read page
   Future<void> _saveLastPage(int page) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt('${widget.fileName}_lastPage', page);
+    setState(() {
+      _lastReadPage = page;
+    });
   }
 
   // Search for a Surah
   void _searchSurah(String query) {
     final surah = _surahToPage[query];
     if (surah != null) {
-      _pdfController?.setPage(surah);
-      setState(() {
-        _currentPage = surah;
-      });
-      _saveLastPage(surah);
+      _navigateToPage(surah, showSnackBar: true);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Navigated to $query')),
       );
@@ -464,19 +495,47 @@ class _PDFViewerPageState extends State<PDFViewerPage> {
       if (velocity < 0 && _currentPage > 0) {
         // Swipe left: go to previous page
         final newPage = _currentPage - 1;
-        _pdfController?.setPage(newPage);
-        setState(() {
-          _currentPage = newPage;
-        });
-        _saveLastPage(newPage);
+        _navigateToPage(newPage, showSnackBar: false); // No SnackBar for swipes
       } else if (velocity > 0 && _currentPage < _totalPages - 1) {
         // Swipe right: go to next page
         final newPage = _currentPage + 1;
-        _pdfController?.setPage(newPage);
-        setState(() {
-          _currentPage = newPage;
-        });
-        _saveLastPage(newPage);
+        _navigateToPage(newPage, showSnackBar: false); // No SnackBar for swipes
+      }
+    }
+  }
+
+  // Navigate to a specific page with error handling and logging
+  Future<void> _navigateToPage(int page, {bool showSnackBar = true}) async {
+    if (_pdfController == null || !mounted) {
+      print('Navigation failed: PDF controller is null or widget is unmounted');
+      return;
+    }
+    try {
+      print('Attempting to navigate to page $page');
+      await _pdfController!.setPage(page);
+      setState(() {
+        _currentPage = page;
+        _isPageSet = true; // Mark page as set
+      });
+      await _saveLastPage(page);
+      print('Successfully navigated to page $page');
+      if (showSnackBar && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Navigated to page ${page + 1}')),
+        );
+      }
+    } catch (e) {
+      print('Error navigating to page $page: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to navigate to page ${page + 1}'),
+            action: SnackBarAction(
+              label: 'Retry',
+              onPressed: () => _navigateToPage(page, showSnackBar: true),
+            ),
+          ),
+        );
       }
     }
   }
@@ -524,6 +583,14 @@ class _PDFViewerPageState extends State<PDFViewerPage> {
           ),
         ],
       ),
+      floatingActionButton: _lastReadPage != null && _lastReadPage! > 0
+          ? FloatingActionButton(
+        backgroundColor: Color(0xFF44C17B),
+        tooltip: 'Resume at page ${_lastReadPage! + 1}',
+        onPressed: () => _navigateToPage(_lastReadPage!, showSnackBar: true),
+        child: Icon(Icons.restore_page, color: Colors.white),
+      )
+          : null,
       body: Column(
         children: [
           if (_showSearchBar)
@@ -560,20 +627,28 @@ class _PDFViewerPageState extends State<PDFViewerPage> {
                     filePath: widget.filePath,
                     onViewCreated: (PDFViewController controller) async {
                       _pdfController = controller;
-                      await _pdfController?.setPage(_currentPage);
-                      final total = await _pdfController?.getPageCount();
+                      // Get total pages and validate current page
+                      final total = await _pdfController?.getPageCount() ?? 0;
                       setState(() {
-                        _totalPages = total ?? 0;
+                        _totalPages = total;
+                        // Validate _currentPage
+                        if (_currentPage >= total) {
+                          _currentPage = total - 1;
+                        } else if (_currentPage < 0) {
+                          _currentPage = 0;
+                        }
                       });
                     },
                     onPageChanged: (page, total) {
                       setState(() {
                         _currentPage = page ?? 0;
                         _totalPages = total ?? 0;
+                        _isPageSet = true; // Mark page as set
                       });
                       _saveLastPage(_currentPage);
                     },
                     onError: (error) {
+                      print('PDF loading error: $error');
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(content: Text('Error loading PDF: $error')),
                       );
