@@ -179,11 +179,11 @@ class _PdfquranFirstscreenState extends State<PdfquranFirstscreen> {
             imagePath: 'assets/images/color_pdf.jpg',
             fileName: 'Colorful Quran',
             fileSize: '90.8 MB',
-            fileUrl: 'https://drive.google.com/uc?export=download&id=1nnR1Mn3ZJJFcY9jjJq5LVTZaT6xJsJGl',
+            fileUrl: 'https://drive.google.com/uc?export=download&id=1XKzw_pFBlYw05PlYUxXbrqOVoLsOucdB',
             isDownloading: isDownloading['Colorful Quran'] ?? false,
             downloadProgress: downloadProgress['Colorful Quran'] ?? 0.0,
             downloadedFilePath: downloadedFilePaths['Colorful Quran'],
-            onDownload: () => downloadPDF('Colorful Quran', 'https://drive.google.com/uc?export=download&id=1nnR1Mn3ZJJFcY9jjJq5LVTZaT6xJsJGl'),
+            onDownload: () => downloadPDF('Colorful Quran', 'https://drive.google.com/uc?export=download&id=1XKzw_pFBlYw05PlYUxXbrqOVoLsOucdB'),
             onCancel: () => cancelDownload('Colorful Quran'),
             onOpen: () {
               Navigator.push(
@@ -203,11 +203,11 @@ class _PdfquranFirstscreenState extends State<PdfquranFirstscreen> {
             imagePath: 'assets/images/bnw_pdf.jpg',
             fileName: 'Black and White Quran',
             fileSize: '41.2 MB',
-            fileUrl: 'https://drive.google.com/uc?export=download&id=1lfWI8BXWXMx-ArJ1jrE-KtKrZ7jw4A9q',
+            fileUrl: 'https://drive.google.com/uc?export=download&id=1l_NVVvo5Df4cKYcEQ9zq3Ap1NYhOPjeT',
             isDownloading: isDownloading['Black and White Quran'] ?? false,
             downloadProgress: downloadProgress['Black and White Quran'] ?? 0.0,
             downloadedFilePath: downloadedFilePaths['Black and White Quran'],
-            onDownload: () => downloadPDF('Black and White Quran', 'https://drive.google.com/uc?export=download&id=1lfWI8BXWXMx-ArJ1jrE-KtKrZ7jw4A9q'),
+            onDownload: () => downloadPDF('Black and White Quran', 'https://drive.google.com/uc?export=download&id=1l_NVVvo5Df4cKYcEQ9zq3Ap1NYhOPjeT'),
             onCancel: () => cancelDownload('Black and White Quran'),
             onOpen: () {
               Navigator.push(
@@ -408,16 +408,158 @@ class _PDFViewerPageState extends State<PDFViewerPage> {
   int _currentPage = 0;
   int _totalPages = 0;
   int? _lastReadPage; // Store last read page separately
-  final TextEditingController _searchController = TextEditingController();
-  bool _showSearchBar = false;
   bool _isPageSet = false; // Flag to prevent multiple page sets
 
-  // Example Surah to page mapping (customize based on your PDF)
+  // Parah to page mapping (customize based on your PDF)
+  final Map<String, int> _parahToPage = {
+    'Juz 1': 1,
+    'Juz 2': 22,
+    'Juz 3': 42,
+    'Juz 4': 62,
+    'Juz 5': 82,
+    'Juz 6': 102,
+    'Juz 7': 122,
+    'Juz 8': 142,
+    'Juz 9': 162,
+    'Juz 10': 182,
+    'Juz 11': 202,
+    'Juz 12': 222,
+    'Juz 13': 242,
+    'Juz 14': 262,
+    'Juz 15': 282,
+    'Juz 16': 302,
+    'Juz 17': 322,
+    'Juz 18': 342,
+    'Juz 19': 362,
+    'Juz 20': 382,
+    'Juz 21': 402,
+    'Juz 22': 422,
+    'Juz 23': 442,
+    'Juz 24': 462,
+    'Juz 25': 482,
+    'Juz 26': 502,
+    'Juz 27': 522,
+    'Juz 28': 542,
+    'Juz 29': 562,
+    'Juz 30': 586,
+  };
+
+  // Surah to page mapping (customize based on your PDF)
   final Map<String, int> _surahToPage = {
     'Al-Fatihah': 1,
     'Al-Baqarah': 2,
-    'Aal-E-Imran': 51,
-    // Add more Surahs and their starting pages
+    'Aal-E-Imran': 50,
+    'An-Nisa': 77,
+    'Al-Ma\'idah': 106,
+    'Al-An\'am': 128,
+    'Al-A\'raf': 151,
+    'Al-Anfal': 177,
+    'At-Tawbah': 187,
+    'Yunus': 208,
+    'Hud': 221,
+    'Yusuf': 235,
+    'Ar-Ra\'d': 249,
+    'Ibrahim': 255,
+    'Al-Hijr': 262,
+    'An-Nahl': 267,
+    'Al-Isra': 282,
+    'Al-Kahf': 293,
+    'Maryam': 305,
+    'Ta-Ha': 312,
+    'Al-Anbiya': 322,
+    'Al-Hajj': 332,
+    'Al-Mu\'minun': 342,
+    'An-Nur': 350,
+    'Al-Furqan': 359,
+    'Ash-Shu\'ara': 367,
+    'An-Naml': 377,
+    'Al-Qasas': 385,
+    'Al-Ankabut': 396,
+    'Ar-Rum': 404,
+    'Luqman': 411,
+    'As-Sajdah': 415,
+    'Al-Ahzab': 418,
+    'Saba': 428,
+    'Fatir': 434,
+    'Ya-Sin': 440,
+    'As-Saffat': 446,
+    'Sad': 453,
+    'Az-Zumar': 458,
+    'Ghafir': 467,
+    'Fussilat': 477,
+    'Ash-Shura': 483,
+    'Az-Zukhruf': 489,
+    'Ad-Dukhan': 496,
+    'Al-Jathiyah': 499,
+    'Al-Ahqaf': 502,
+    'Muhammad': 507,
+    'Al-Fath': 511,
+    'Al-Hujurat': 515,
+    'Qaf': 518,
+    'Adh-Dhariyat': 520,
+    'At-Tur': 523,
+    'An-Najm': 526,
+    'Al-Qamar': 528,
+    'Ar-Rahman': 531,
+    'Al-Waqi\'ah': 534,
+    'Al-Hadid': 537,
+    'Al-Mujadilah': 542,
+    'Al-Hashr': 545,
+    'Al-Mumtahanah': 549,
+    'As-Saff': 551,
+    'Al-Jumu\'ah': 553,
+    'Al-Munafiqun': 554,
+    'At-Taghabun': 556,
+    'At-Talaq': 558,
+    'At-Tahrim': 560,
+    'Al-Mulk': 562,
+    'Al-Qalam': 564,
+    'Al-Haqqah': 566,
+    'Al-Ma\'arij': 568,
+    'Nuh': 570,
+    'Al-Jinn': 572,
+    'Al-Muzzammil': 574,
+    'Al-Muddaththir': 575,
+    'Al-Qiyamah': 577,
+    'Al-Insan': 578,
+    'Al-Mursalat': 580,
+    'An-Naba': 582,
+    'An-Nazi\'at': 583,
+    'Abasa': 585,
+    'At-Takwir': 586,
+    'Al-Infitar': 587,
+    'Al-Mutaffifin': 588,
+    'Al-Inshiqaq': 589,
+    'Al-Buruj': 590,
+    'At-Tariq': 591,
+    'Al-A\'la': 592,
+    'Al-Ghashiyah': 593,
+    'Al-Fajr': 594,
+    'Al-Balad': 595,
+    'Ash-Shams': 596,
+    'Al-Lail': 597,
+    'Ad-Duha': 598,
+    'Ash-Sharh': 599,
+    'At-Tin': 600,
+    'Al-Alaq': 601,
+    'Al-Qadr': 602,
+    'Al-Bayyinah': 603,
+    'Az-Zalzalah': 604,
+    'Al-Adiyat': 605,
+    'Al-Qari\'ah': 606,
+    'At-Takathur': 607,
+    'Al-Asr': 608,
+    'Al-Humazah': 609,
+    'Al-Fil': 610,
+    'Quraysh': 611,
+    'Al-Ma\'un': 612,
+    'Al-Kawthar': 613,
+    'Al-Kafirun': 614,
+    'An-Nasr': 615,
+    'Al-Masad': 616,
+    'Al-Ikhlas': 617,
+    'Al-Falaq': 618,
+    'An-Nas': 619,
   };
 
   @override
@@ -428,7 +570,6 @@ class _PDFViewerPageState extends State<PDFViewerPage> {
 
   @override
   void dispose() {
-    _searchController.dispose();
     super.dispose();
   }
 
@@ -473,37 +614,6 @@ class _PDFViewerPageState extends State<PDFViewerPage> {
     });
   }
 
-  // Search for a Surah
-  void _searchSurah(String query) {
-    final surah = _surahToPage[query];
-    if (surah != null) {
-      _navigateToPage(surah, showSnackBar: true);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Navigated to $query')),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Surah not found')),
-      );
-    }
-  }
-
-  // Handle swipe gestures
-  void _handleSwipe(DragEndDetails details) {
-    final velocity = details.primaryVelocity;
-    if (velocity != null) {
-      if (velocity < 0 && _currentPage > 0) {
-        // Swipe left: go to previous page
-        final newPage = _currentPage - 1;
-        _navigateToPage(newPage, showSnackBar: false); // No SnackBar for swipes
-      } else if (velocity > 0 && _currentPage < _totalPages - 1) {
-        // Swipe right: go to next page
-        final newPage = _currentPage + 1;
-        _navigateToPage(newPage, showSnackBar: false); // No SnackBar for swipes
-      }
-    }
-  }
-
   // Navigate to a specific page with error handling and logging
   Future<void> _navigateToPage(int page, {bool showSnackBar = true}) async {
     if (_pdfController == null || !mounted) {
@@ -540,6 +650,97 @@ class _PDFViewerPageState extends State<PDFViewerPage> {
     }
   }
 
+  // Show Parah selection dialog
+  void _showParahDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          'Select Parah',
+          style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+        ),
+        content: Container(
+          width: double.maxFinite,
+          height: 300,
+          child: ListView.builder(
+            itemCount: _parahToPage.length,
+            itemBuilder: (context, index) {
+              final parah = _parahToPage.keys.elementAt(index);
+              return ListTile(
+                title: Text(parah, style: GoogleFonts.poppins()),
+                onTap: () {
+                  Navigator.pop(context);
+                  _navigateToPage(_parahToPage[parah]!, showSnackBar: true);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Navigated to $parah')),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel', style: GoogleFonts.poppins()),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Handle swipe gestures
+  void _handleSwipe(DragEndDetails details) {
+    final velocity = details.primaryVelocity; if (velocity != null) {
+      if (velocity < 0 && _currentPage > 0) {
+        // Swipe left: go to previous page
+        final newPage = _currentPage - 1; _navigateToPage(newPage, showSnackBar: false);
+        // No SnackBar for swipes
+        } else if (velocity > 0 && _currentPage < _totalPages - 1) {
+        // Swipe right: go to next page
+        final newPage = _currentPage + 1; _navigateToPage(newPage, showSnackBar: false);
+        // No SnackBar for swipes
+        } } }
+
+  // Show Surah selection dialog
+  void _showSurahDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          'Select Surah',
+          style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+        ),
+        content: Container(
+          width: double.maxFinite,
+          height: 300,
+          child: ListView.builder(
+            itemCount: _surahToPage.length,
+            itemBuilder: (context, index) {
+              final surah = _surahToPage.keys.elementAt(index);
+              return ListTile(
+                title: Text(surah, style: GoogleFonts.poppins()),
+                onTap: () {
+                  Navigator.pop(context);
+                  _navigateToPage(_surahToPage[surah]!, showSnackBar: true);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Navigated to $surah')),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel', style: GoogleFonts.poppins()),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -572,14 +773,25 @@ class _PDFViewerPageState extends State<PDFViewerPage> {
           ),
         ),
         actions: [
-          IconButton(
-            icon: Icon(_showSearchBar ? Icons.close : Icons.search, color: Colors.white),
-            onPressed: () {
-              setState(() {
-                _showSearchBar = !_showSearchBar;
-                if (!_showSearchBar) _searchController.clear();
-              });
+          PopupMenuButton<String>(
+            icon: Icon(Icons.more_vert, color: Colors.white),
+            onSelected: (value) {
+              if (value == 'Parahs') {
+                _showParahDialog();
+              } else if (value == 'Surahs') {
+                _showSurahDialog();
+              }
             },
+            itemBuilder: (context) => [
+              PopupMenuItem(
+                value: 'Parahs',
+                child: Text('Parahs', style: GoogleFonts.poppins()),
+              ),
+              PopupMenuItem(
+                value: 'Surahs',
+                child: Text('Surahs', style: GoogleFonts.poppins()),
+              ),
+            ],
           ),
         ],
       ),
@@ -593,24 +805,6 @@ class _PDFViewerPageState extends State<PDFViewerPage> {
           : null,
       body: Column(
         children: [
-          if (_showSearchBar)
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: TextField(
-                controller: _searchController,
-                decoration: InputDecoration(
-                  hintText: 'Enter Surah name (e.g., Al-Fatihah)',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  suffixIcon: IconButton(
-                    icon: Icon(Icons.search),
-                    onPressed: () => _searchSurah(_searchController.text),
-                  ),
-                ),
-                onSubmitted: _searchSurah,
-              ),
-            ),
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: Text(
