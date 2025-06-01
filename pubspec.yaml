@@ -49,6 +49,7 @@ dependencies:
   open_file: ^3.5.10
   flutter_pdfview: ^1.4.0+1
   syncfusion_flutter_pdfviewer: ^29.2.7
+  scrollable_positioned_list: ^0.3.8
 
 dev_dependencies:
   flutter_test:

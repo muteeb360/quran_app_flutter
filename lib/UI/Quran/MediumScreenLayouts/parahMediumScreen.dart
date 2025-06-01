@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import 'package:sqflite/sqflite.dart';
 import '../../../Utils/colors.dart';
 import '../../../Utils/QuranData.dart';
@@ -6,9 +7,15 @@ import 'package:hidaya_app/Utils/DatabaseHelper.dart';
 
 class ParaMediumScreen extends StatefulWidget {
   final int parahNumber;
+  final int? lastReadAyah;
+  final int? lastReadSurah;
 
-  const ParaMediumScreen({Key? key, required this.parahNumber})
-      : super(key: key);
+  const ParaMediumScreen({
+    Key? key,
+    required this.parahNumber,
+    this.lastReadAyah,
+    this.lastReadSurah,
+  }) : super(key: key);
 
   @override
   State<ParaMediumScreen> createState() => _ParaMediumScreenState();
@@ -18,7 +25,9 @@ class _ParaMediumScreenState extends State<ParaMediumScreen> {
   List<Map<String, dynamic>> groupedAyahs = [];
   bool isLoading = true;
   String? errorMessage;
-  bool showTranslation = true; // State to control translation visibility
+  bool showTranslation = true;
+  final ItemScrollController _scrollController = ItemScrollController();
+  int lastReadIndex = 0;
 
   @override
   void initState() {
@@ -35,27 +44,90 @@ class _ParaMediumScreenState extends State<ParaMediumScreen> {
 
       List<Map<String, dynamic>> allAyahs = [];
       final db = await DatabaseHelper.database;
-      for (var surah in parahInfo['surahs']) {
-        final startAyah = surah['start_ayah'];
-        final endAyah = surah['end_ayah'];
+      int cumulativeIndex = 0;
+      bool foundLastRead = false;
 
+      for (var surah in parahInfo['surahs']) {
+        final surahNumber = surah['surah_number'] as int? ?? 1;
+        final startAyah = (surah['start_ayah'] as num?)?.toInt() ?? 1;
+        final endAyah = (surah['end_ayah'] as num?)?.toInt() ?? 1;
+        final startDbId = (surah['start_db_id'] as num?)?.toInt() ?? 1;
+        final verseCount = (endAyah >= startAyah) ? endAyah - startAyah + 1 : 1;
+
+        int? preloadStart;
+        int? preloadEnd;
+        if (widget.lastReadSurah == surahNumber && widget.lastReadAyah != null) {
+          final lastReadAyah = widget.lastReadAyah!.clamp(1, verseCount);
+          // Preload ±5 Ayahs to show more placeholders
+          preloadStart = (lastReadAyah - 5).clamp(1, verseCount);
+          preloadEnd = (lastReadAyah + 5).clamp(1, verseCount);
+          lastReadIndex = cumulativeIndex + 1 + (lastReadAyah - 1);
+          foundLastRead = true;
+        } else {
+          preloadStart = 1;
+          preloadEnd = (verseCount >= 5) ? 5 : verseCount;
+        }
+
+        List<Map<String, dynamic>?> ayahsList = List.filled(verseCount, null);
+
+        // Fetch preload range
         final List<Map<String, dynamic>> result = await db.query(
           'ayahs_table',
           where: 'id BETWEEN ? AND ?',
-          whereArgs: [startAyah, endAyah],
+          whereArgs: [
+            startDbId + (preloadStart - 1),
+            startDbId + (preloadEnd - 1),
+          ],
           orderBy: 'id ASC',
         );
 
+        for (int i = preloadStart - 1; i < preloadEnd; i++) {
+          if (i - (preloadStart - 1) < result.length) {
+            ayahsList[i] = result[i - (preloadStart - 1)];
+          }
+        }
+
         allAyahs.add({
           'surah_info': surah,
-          'ayahs': result,
+          'ayahs': ayahsList,
         });
+
+        cumulativeIndex += 1 + verseCount;
+
+        print("Fetched Ayahs $preloadStart to $preloadEnd for Surah $surahNumber");
       }
 
       setState(() {
         groupedAyahs = allAyahs;
         isLoading = false;
       });
+
+      if (foundLastRead && widget.lastReadAyah != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (_scrollController.isAttached) {
+            _scrollController.jumpTo(
+              index: lastReadIndex,
+              alignment: 0.5,
+            );
+            print("Scrolled to Surah ${widget.lastReadSurah}, Ayah ${widget.lastReadAyah} (index $lastReadIndex)");
+            Future.delayed(Duration(milliseconds: 200), () {
+              if (_scrollController.isAttached) {
+                _scrollController.scrollTo(
+                  index: lastReadIndex,
+                  duration: Duration(milliseconds: 500),
+                  curve: Curves.easeInOut,
+                  alignment: 0.5,
+                );
+              }
+            });
+          }
+        });
+      }
+
+      if (allAyahs.isNotEmpty) {
+        _fetchRemainingAyahs();
+      }
+
       print("Fetched ${groupedAyahs.length} Surahs for Parah ${widget.parahNumber}");
     } catch (e) {
       setState(() {
@@ -66,29 +138,83 @@ class _ParaMediumScreenState extends State<ParaMediumScreen> {
     }
   }
 
-  // Save the last read ayah to the database
+  Future<void> _fetchRemainingAyahs() async {
+    try {
+      final db = await DatabaseHelper.database;
+      int chunkSize = 10; // Smaller chunks for faster updates
+
+      for (int s = 0; s < groupedAyahs.length; s++) {
+        final surahData = groupedAyahs[s];
+        final surahInfo = surahData['surah_info'];
+        final surahNumber = surahInfo['surah_number'] as int? ?? 1;
+        List<Map<String, dynamic>?> ayahsList = List.filled(surahData['ayahs'].length, null);
+        ayahsList.setAll(0, surahData['ayahs']); // Copy existing Ayahs
+        final startAyah = (surahInfo['start_ayah'] as num?)?.toInt() ?? 1;
+        final endAyah = (surahInfo['end_ayah'] as num?)?.toInt() ?? 1;
+        final startDbId = (surahInfo['start_db_id'] as num?)?.toInt() ?? 1;
+        final verseCount = (endAyah >= startAyah) ? endAyah - startAyah + 1 : 1;
+
+        bool hasNulls = ayahsList.any((ayah) => ayah == null);
+        if (!hasNulls) {
+          print("No null Ayahs for Surah $surahNumber, skipping fetch");
+          continue;
+        }
+
+        // Fetch all null Ayahs in chunks
+        for (int i = 0; i < verseCount; i += chunkSize) {
+          int start = i + 1;
+          int end = (i + chunkSize).clamp(1, verseCount);
+          if (ayahsList.getRange(start - 1, end).every((ayah) => ayah != null)) {
+            continue; // Skip if chunk is fully loaded
+          }
+
+          print("Fetching Ayahs $start to $end for Surah $surahNumber");
+          final result = await db.query(
+            'ayahs_table',
+            where: 'id BETWEEN ? AND ?',
+            whereArgs: [
+              startDbId + (start - 1),
+              startDbId + (end - 1),
+            ],
+            orderBy: 'id ASC',
+          );
+
+          setState(() {
+            for (int j = start - 1; j < end; j++) {
+              if (j - (start - 1) < result.length) {
+                ayahsList[j] = result[j - (start - 1)];
+              }
+            }
+            groupedAyahs[s]['ayahs'] = ayahsList;
+          });
+
+          await Future.delayed(Duration(milliseconds: 50)); // Faster updates
+        }
+      }
+    } catch (e) {
+      print("Failed to fetch remaining ayahs: $e");
+    }
+  }
+
   Future<void> _saveLastRead(int surahNumber, int ayahIndex, String surahName, String arabicName) async {
     try {
       final db = await DatabaseHelper.database;
-      // Clear previous last read entries (we only want one last read)
       await db.delete('last_read');
-      // Insert the new last read
       await db.insert(
         'last_read',
         {
           'surah_number': surahNumber,
-          'ayah_number': ayahIndex + 1, // Ayah number is 1-based
+          'ayah_number': ayahIndex + 1,
           'surah_name': surahName,
           'arabic_name': arabicName,
           'timestamp': DateTime.now().millisecondsSinceEpoch,
-          'source': 'parah', // Indicate that the last read is from a Parah
-          'parah_number': widget.parahNumber, // Save the parah number
+          'source': 'parah',
+          'parah_number': widget.parahNumber,
         },
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
       print("Saved last read: Surah $surahNumber, Ayah ${ayahIndex + 1}, Source: parah");
 
-      // Show a confirmation to the user
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Last read updated: $surahName, Ayah ${ayahIndex + 1}'),
@@ -106,13 +232,6 @@ class _ParaMediumScreenState extends State<ParaMediumScreen> {
     }
   }
 
-  @override
-  void dispose() {
-    // No need to close the database; DatabaseHelper manages it
-    super.dispose();
-  }
-
-  // Toggle translation visibility
   void _toggleTranslation() {
     setState(() {
       showTranslation = !showTranslation;
@@ -131,9 +250,12 @@ class _ParaMediumScreenState extends State<ParaMediumScreen> {
     );
     final parahName = parahInfo['name_english'] ?? 'Unknown Parah';
     final arabicName = parahInfo['name_arabic'] ?? 'Unknown Arabic Name';
-    final startAyah = parahInfo['start_ayah'] ?? 'Unknown Start';
-    final endAyah = parahInfo['end_ayah'] ?? 'Unknown End';
-    final totalAyahs = (endAyah - startAyah + 1);
+
+    int totalItems = 0;
+    for (var surahData in groupedAyahs) {
+      final ayahs = surahData['ayahs'] as List;
+      totalItems += 1 + ayahs.length;
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -197,70 +319,85 @@ class _ParaMediumScreenState extends State<ParaMediumScreen> {
           ? const Center(child: CircularProgressIndicator())
           : errorMessage != null
           ? Center(child: Text(errorMessage!))
-          : ListView(
+          : ScrollablePositionedList.builder(
+        itemScrollController: _scrollController,
         padding: EdgeInsets.symmetric(
-            vertical: screenHeight * 0.02,
-            horizontal: screenWidth * 0.05),
-        children: [
-          const SizedBox(height: 16),
-          ...groupedAyahs.asMap().entries.map((entry) {
-            final surahIndex = entry.key;
-            final surahData = entry.value;
+            vertical: screenHeight * 0.02, horizontal: screenWidth * 0.05),
+        itemCount: totalItems,
+        itemBuilder: (context, index) {
+          int currentIndex = 0;
+          for (var surahData in groupedAyahs) {
             final surahInfo = surahData['surah_info'];
-            final ayahs = surahData['ayahs'] as List<Map<String, dynamic>>;
+            final ayahs = surahData['ayahs'] as List<Map<String, dynamic>?>;
+            final surahNumber = surahInfo['surah_number'] as int? ?? 1;
 
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SurahInfoCard(
-                  surahInfo: surahInfo,
-                  showTranslation: showTranslation, // Pass the toggle state
-                ),
-                const SizedBox(height: 8),
-                ...ayahs.asMap().entries.map((ayahEntry) {
-                  final ayahIndex = ayahEntry.key;
-                  final ayah = ayahEntry.value;
-                  return AyahCard(
-                    index: ayahIndex + 1,
-                    arabicText: ayah['arabic_text'],
-                    translationText: ayah['translation_text'],
-                    showTranslation: showTranslation, // Pass the toggle state
-                    onLongPress: () {
-                      // Show dialog on long press
-                      showDialog(
-                        context: context,
-                        builder: (context) => AlertDialog(
-                          title: Text('Ayah ${ayahIndex + 1}'),
-                          content: const Text('Do you want to set this ayah as your last read?'),
-                          actions: [
-                            TextButton(
-                              onPressed: () {
-                                Navigator.pop(context);
-                              },
-                              child: const Text('Cancel'),
-                            ),
-                            TextButton(
-                              onPressed: () {
-                                _saveLastRead(
-                                  surahInfo['surah_number'],
-                                  ayahIndex,
-                                  surahInfo['surah_name'],
-                                  surahInfo['arabic_name'],
-                                );
-                                Navigator.pop(context);
-                              },
-                              child: const Text('Add Last Read'),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
+            if (index == currentIndex) {
+              return Column(
+                children: [
+                  const SizedBox(height: 16),
+                  SurahInfoCard(
+                    surahInfo: surahInfo,
+                    showTranslation: showTranslation,
+                  ),
+                  const SizedBox(height: 8),
+                ],
+              );
+            }
+            currentIndex++;
+
+            for (int ayahIndex = 0; ayahIndex < ayahs.length; ayahIndex++) {
+              if (index == currentIndex) {
+                final ayah = ayahs[ayahIndex];
+                print("Rendering index $index: Surah $surahNumber, Ayah ${ayahIndex + 1}, IsNull: ${ayah == null}");
+                if (ayah == null) {
+                  return const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8.0),
+                    child: Center(child: CircularProgressIndicator()),
                   );
-                }).toList(),
-              ],
-            );
-          }).toList(),
-        ],
+                }
+                return AyahCard(
+                  index: ayahIndex + 1,
+                  arabicText: ayah['arabic_text'] ?? 'No text available',
+                  translationText: ayah['translation_text'] ?? 'No translation available',
+                  showTranslation: showTranslation,
+                  isLastRead: widget.lastReadSurah == surahNumber &&
+                      widget.lastReadAyah == (ayahIndex + 1),
+                  onLongPress: () {
+                    showDialog(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: Text('Ayah ${ayahIndex + 1}'),
+                        content: const Text('Do you want to set this ayah as your last read?'),
+                        actions: [
+                          TextButton(
+                            onPressed: () {
+                              Navigator.pop(context);
+                            },
+                            child: const Text('Cancel'),
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              _saveLastRead(
+                                surahNumber,
+                                ayahIndex,
+                                surahInfo['surah_name'] ?? 'Unknown Surah',
+                                surahInfo['arabic_name'] ?? 'Unknown Arabic',
+                              );
+                              Navigator.pop(context);
+                            },
+                            child: const Text('Add Last Read'),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                );
+              }
+              currentIndex++;
+            }
+          }
+          return const SizedBox.shrink();
+        },
       ),
     );
   }
@@ -268,7 +405,7 @@ class _ParaMediumScreenState extends State<ParaMediumScreen> {
 
 class SurahInfoCard extends StatelessWidget {
   final Map<String, dynamic> surahInfo;
-  final bool showTranslation; // Add this to control translation visibility
+  final bool showTranslation;
 
   const SurahInfoCard({
     Key? key,
@@ -349,16 +486,18 @@ class SurahInfoCard extends StatelessWidget {
                     ),
                     textDirection: TextDirection.rtl,
                   ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    "شروع اللہ کے نام سے جو بڑا مہربان نہایت رحم والا ہے",
-                    style: TextStyle(
-                      fontFamily: 'NotoNaskhArabic',
-                      color: Colors.white,
-                      fontSize: 13,
+                  if (showTranslation) ...[
+                    const SizedBox(height: 8),
+                    const Text(
+                      "شروع اللہ کے نام سے جو بڑا مہربان نہایت رحم والا ہے",
+                      style: TextStyle(
+                        fontFamily: 'NotoNaskhArabic',
+                        color: Colors.white,
+                        fontSize: 13,
+                      ),
+                      textDirection: TextDirection.rtl,
                     ),
-                    textDirection: TextDirection.rtl,
-                  ),
+                  ],
                 ],
               ),
             ),
@@ -373,8 +512,9 @@ class AyahCard extends StatelessWidget {
   final int index;
   final String arabicText;
   final String translationText;
-  final bool showTranslation; // Add this to control translation visibility
-  final VoidCallback onLongPress; // Add callback for long press
+  final bool showTranslation;
+  final bool isLastRead;
+  final VoidCallback onLongPress;
 
   const AyahCard({
     Key? key,
@@ -383,12 +523,13 @@ class AyahCard extends StatelessWidget {
     required this.translationText,
     required this.showTranslation,
     required this.onLongPress,
+    this.isLastRead = false,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onLongPress: onLongPress, // Trigger the long press callback
+      onLongPress: onLongPress,
       child: Card(
         margin: const EdgeInsets.symmetric(vertical: 8.0),
         shape: RoundedRectangleBorder(
@@ -398,7 +539,8 @@ class AyahCard extends StatelessWidget {
         child: Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(10),
-            color: Colors.white,
+            color: isLastRead ? Colors.green.withOpacity(0.1
+            ) : Colors.white,
           ),
           child: Padding(
             padding: const EdgeInsets.all(16.0),
