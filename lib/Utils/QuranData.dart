@@ -126,7 +126,7 @@ class QuranData {
           "surah_number": 1,
           "surah_name": "Al-Fatihah",
           "arabic_name": "الْفَاتِحَة",
-          "start_ayah": 3,
+          "start_ayah": 2,
           "end_ayah": 7,
           "verses_in_para": 6
         },

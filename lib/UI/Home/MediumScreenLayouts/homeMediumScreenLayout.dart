@@ -30,6 +30,7 @@ class _HomeMediumScreenLayoutState extends State<HomeMediumScreenLayout> {
   String _currentTime = "12:38 pm";
   String _currentDate = "Fri 25-02-25";
   String _upcomingPrayer = "DHUHR";
+  String _currentPrayer = "unknown";
   String _upcomingPrayerTime = "12:38 pm";
   Map<String, String> _prayerTimes = {
     'Fajr': 'Loading...',
@@ -263,20 +264,34 @@ class _HomeMediumScreenLayoutState extends State<HomeMediumScreenLayout> {
       {'name': 'Isha', 'time': _prayerTimes['Isha']!},
     ];
 
+    String currentPrayer = 'None';
+    String upcomingPrayer = 'Fajr';
+    String upcomingPrayerTime = _prayerTimes['Fajr']! + ' (Tomorrow)';
+
+    // Calculate current and upcoming prayer
     for (int i = 0; i < prayerList.length; i++) {
       final prayerTime = _parseTimeToMinutes(prayerList[i]['time']);
-      if (currentTime < prayerTime) {
-        setState(() {
-          _upcomingPrayer = prayerList[i]['name'].toUpperCase();
-          _upcomingPrayerTime = prayerList[i]['time'];
-        });
-        return;
+      final nextPrayerIndex = (i + 1) % prayerList.length;
+      final nextPrayerTime = nextPrayerIndex == 0
+          ? _parseTimeToMinutes(_prayerTimes['Fajr']!) + 24 * 60 // Next day's Fajr
+          : _parseTimeToMinutes(prayerList[nextPrayerIndex]['time']);
+
+      if (currentTime >= prayerTime && currentTime < nextPrayerTime) {
+        currentPrayer = prayerList[i]['name'].toUpperCase();
+        upcomingPrayer = nextPrayerIndex == 0
+            ? 'Fajr'
+            : prayerList[nextPrayerIndex]['name'].toUpperCase();
+        upcomingPrayerTime = nextPrayerIndex == 0
+            ? _prayerTimes['Fajr']! + ' (Tomorrow)'
+            : prayerList[nextPrayerIndex]['time'];
+        break;
       }
     }
 
     setState(() {
-      _upcomingPrayer = 'Fajr';
-      _upcomingPrayerTime = _prayerTimes['Fajr']! + ' (Tomorrow)';
+      _currentPrayer = currentPrayer;
+      _upcomingPrayer = upcomingPrayer;
+      _upcomingPrayerTime = upcomingPrayerTime;
     });
   }
 
@@ -435,7 +450,7 @@ class _HomeMediumScreenLayoutState extends State<HomeMediumScreenLayout> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  "Now",
+                                  "Now ($_currentPrayer)",
                                   style: GoogleFonts.poppins(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w600,

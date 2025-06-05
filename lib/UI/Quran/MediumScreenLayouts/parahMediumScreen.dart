@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import 'package:sqflite/sqflite.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../Utils/colors.dart';
 import '../../../Utils/QuranData.dart';
 import 'package:hidaya_app/Utils/DatabaseHelper.dart';
@@ -28,13 +29,24 @@ class _ParaMediumScreenState extends State<ParaMediumScreen> {
   bool showTranslation = true;
   final ItemScrollController _scrollController = ItemScrollController();
   int lastReadIndex = 0;
-  double arabicFontSize = 22.0; // Default Arabic text size
-  double translationFontSize = 14.0; // Default translation text size
+  double arabicFontSize = 22.0;
+  double translationFontSize = 14.0;
+  double ayahEndSignFontSize = 12.0;
 
   @override
   void initState() {
     super.initState();
+    _loadFontSizes();
     _fetchAyahs();
+  }
+
+  Future<void> _loadFontSizes() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      arabicFontSize = prefs.getDouble('arabicFontSize') ?? 22.0;
+      translationFontSize = prefs.getDouble('translationFontSize') ?? 14.0;
+      ayahEndSignFontSize = prefs.getDouble('ayahEndSignFontSize') ?? 12.0;
+    });
   }
 
   Future<void> _fetchAyahs() async {
@@ -43,6 +55,7 @@ class _ParaMediumScreenState extends State<ParaMediumScreen> {
             (parah) => parah['para_number'] == widget.parahNumber,
         orElse: () => {"surahs": []},
       );
+      print("Parah number: ${widget.parahNumber}");
 
       List<Map<String, dynamic>> allAyahs = [];
       final db = await DatabaseHelper.database;
@@ -53,48 +66,33 @@ class _ParaMediumScreenState extends State<ParaMediumScreen> {
         final surahNumber = surah['surah_number'] as int? ?? 1;
         final startAyah = (surah['start_ayah'] as num?)?.toInt() ?? 1;
         final endAyah = (surah['end_ayah'] as num?)?.toInt() ?? 1;
-        final startDbId = (surah['start_db_id'] as num?)?.toInt() ?? 1;
         final verseCount = (endAyah >= startAyah) ? endAyah - startAyah + 1 : 1;
 
-        int? preloadStart;
-        int? preloadEnd;
+        int preloadStart = 1;
+        int preloadEnd = verseCount;
         if (widget.lastReadSurah == surahNumber && widget.lastReadAyah != null) {
           final lastReadAyah = widget.lastReadAyah!.clamp(1, verseCount);
           preloadStart = (lastReadAyah - 5).clamp(1, verseCount);
           preloadEnd = (lastReadAyah + 5).clamp(1, verseCount);
           lastReadIndex = cumulativeIndex + 1 + (lastReadAyah - 1);
           foundLastRead = true;
-        } else {
-          preloadStart = 1;
-          preloadEnd = (verseCount >= 5) ? 5 : verseCount;
         }
-
-        List<Map<String, dynamic>?> ayahsList = List.filled(verseCount, null);
 
         final List<Map<String, dynamic>> result = await db.query(
           'ayahs_table',
           where: 'id BETWEEN ? AND ?',
-          whereArgs: [
-            startDbId + (preloadStart - 1),
-            startDbId + (preloadEnd - 1),
-          ],
+          whereArgs: [startAyah, endAyah],
           orderBy: 'id ASC',
         );
 
-        for (int i = preloadStart - 1; i < preloadEnd; i++) {
-          if (i - (preloadStart - 1) < result.length) {
-            ayahsList[i] = result[i - (preloadStart - 1)];
-          }
-        }
-
         allAyahs.add({
           'surah_info': surah,
-          'ayahs': ayahsList,
+          'ayahs': result,
         });
 
-        cumulativeIndex += 1 + verseCount;
+        cumulativeIndex += 1 + result.length;
 
-        print("Fetched Ayahs $preloadStart to $preloadEnd for Surah $surahNumber");
+        print("Fetched Ayahs $startAyah to $endAyah for Surah $surahNumber");
       }
 
       setState(() {
@@ -109,8 +107,7 @@ class _ParaMediumScreenState extends State<ParaMediumScreen> {
               index: lastReadIndex,
               alignment: 0.5,
             );
-            print(
-                "Scrolled to Surah ${widget.lastReadSurah}, Ayah ${widget.lastReadAyah} (index $lastReadIndex)");
+            print("Scrolled to Surah ${widget.lastReadSurah}, Ayah ${widget.lastReadAyah} (index $lastReadIndex)");
             Future.delayed(Duration(milliseconds: 200), () {
               if (_scrollController.isAttached) {
                 _scrollController.scrollTo(
@@ -125,10 +122,6 @@ class _ParaMediumScreenState extends State<ParaMediumScreen> {
         });
       }
 
-      if (allAyahs.isNotEmpty) {
-        _fetchRemainingAyahs();
-      }
-
       print("Fetched ${groupedAyahs.length} Surahs for Parah ${widget.parahNumber}");
     } catch (e) {
       setState(() {
@@ -136,63 +129,6 @@ class _ParaMediumScreenState extends State<ParaMediumScreen> {
         isLoading = false;
       });
       print(errorMessage);
-    }
-  }
-
-  Future<void> _fetchRemainingAyahs() async {
-    try {
-      final db = await DatabaseHelper.database;
-      int chunkSize = 10;
-
-      for (int s = 0; s < groupedAyahs.length; s++) {
-        final surahData = groupedAyahs[s];
-        final surahInfo = surahData['surah_info'];
-        final surahNumber = surahInfo['surah_number'] as int? ?? 1;
-        List<Map<String, dynamic>?> ayahsList = List.filled(surahData['ayahs'].length, null);
-        ayahsList.setAll(0, surahData['ayahs']);
-        final startAyah = (surahInfo['start_ayah'] as num?)?.toInt() ?? 1;
-        final endAyah = (surahInfo['end_ayah'] as num?)?.toInt() ?? 1;
-        final startDbId = (surahInfo['start_db_id'] as num?)?.toInt() ?? 1;
-        final verseCount = (endAyah >= startAyah) ? endAyah - startAyah + 1 : 1;
-
-        bool hasNulls = ayahsList.any((ayah) => ayah == null);
-        if (!hasNulls) {
-          print("No null Ayahs for Surah $surahNumber, skipping fetch");
-          continue;
-        }
-
-        for (int i = 0; i < verseCount; i += chunkSize) {
-          int start = i + 1;
-          int end = (i + chunkSize).clamp(1, verseCount);
-          if (ayahsList.getRange(start - 1, end).every((ayah) => ayah != null)) {
-            continue;
-          }
-
-          print("Fetching Ayahs $start to $end for Surah $surahNumber");
-          final result = await db.query(
-            'ayahs_table',
-            where: 'id BETWEEN ? AND ?',
-            whereArgs: [
-              startDbId + (start - 1),
-              startDbId + (end - 1),
-            ],
-            orderBy: 'id ASC',
-          );
-
-          setState(() {
-            for (int j = start - 1; j < end; j++) {
-              if (j - (start - 1) < result.length) {
-                ayahsList[j] = result[j - (start - 1)];
-              }
-            }
-            groupedAyahs[s]['ayahs'] = ayahsList;
-          });
-
-          await Future.delayed(Duration(milliseconds: 50));
-        }
-      }
-    } catch (e) {
-      print("Failed to fetch remaining ayahs: $e");
     }
   }
 
@@ -241,6 +177,7 @@ class _ParaMediumScreenState extends State<ParaMediumScreen> {
   void _showFontSizeDialog() {
     double tempArabicFontSize = arabicFontSize;
     double tempTranslationFontSize = translationFontSize;
+    double tempAyahEndSignFontSize = ayahEndSignFontSize;
 
     showDialog(
       context: context,
@@ -298,6 +235,25 @@ class _ParaMediumScreenState extends State<ParaMediumScreen> {
                       });
                     },
                   ),
+                  const Text(
+                    'Ayah End Sign Size:',
+                    style: TextStyle(
+                      fontFamily: 'Poppins',
+                      fontSize: 14,
+                    ),
+                  ),
+                  Slider(
+                    value: tempAyahEndSignFontSize,
+                    min: 8.0,
+                    max: 24.0,
+                    divisions: 8,
+                    label: tempAyahEndSignFontSize.round().toString(),
+                    onChanged: (value) {
+                      setDialogState(() {
+                        tempAyahEndSignFontSize = value;
+                      });
+                    },
+                  ),
                   const SizedBox(height: 16),
                   const Text(
                     'Preview:',
@@ -316,7 +272,8 @@ class _ParaMediumScreenState extends State<ParaMediumScreen> {
                     isLastRead: false,
                     arabicFontSize: tempArabicFontSize,
                     translationFontSize: tempTranslationFontSize,
-                    onLongPress: () {}, // No action for preview
+                    ayahEndSignFontSize: tempAyahEndSignFontSize,
+                    onLongPress: () {},
                   ),
                 ],
               ),
@@ -335,10 +292,15 @@ class _ParaMediumScreenState extends State<ParaMediumScreen> {
             ),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.setDouble('arabicFontSize', tempArabicFontSize);
+              await prefs.setDouble('translationFontSize', tempTranslationFontSize);
+              await prefs.setDouble('ayahEndSignFontSize', tempAyahEndSignFontSize);
               setState(() {
                 arabicFontSize = tempArabicFontSize;
                 translationFontSize = tempTranslationFontSize;
+                ayahEndSignFontSize = tempAyahEndSignFontSize;
               });
               Navigator.pop(context);
             },
@@ -359,7 +321,7 @@ class _ParaMediumScreenState extends State<ParaMediumScreen> {
   Widget build(BuildContext context) {
     final mediaQuery = MediaQuery.of(context);
     final screenWidth = mediaQuery.size.width;
-    final screenHeight = mediaQuery.size.height;
+    final screenHeight = MediaQuery.of(context).size.height;
 
     final parahInfo = QuranData.parahRanges.firstWhere(
           (parah) => parah['para_number'] == widget.parahNumber,
@@ -452,14 +414,13 @@ class _ParaMediumScreenState extends State<ParaMediumScreen> {
           : ScrollablePositionedList.builder(
         itemScrollController: _scrollController,
         padding: EdgeInsets.symmetric(
-            vertical: screenHeight * 0.02,
-            horizontal: screenWidth * 0.05),
+            vertical: screenHeight * 0.02, horizontal: screenWidth * 0.05),
         itemCount: totalItems,
         itemBuilder: (context, index) {
           int currentIndex = 0;
           for (var surahData in groupedAyahs) {
             final surahInfo = surahData['surah_info'];
-            final ayahs = surahData['ayahs'] as List<Map<String, dynamic>?>;
+            final ayahs = surahData['ayahs'] as List<Map<String, dynamic>>;
             final surahNumber = surahInfo['surah_number'] as int? ?? 1;
 
             if (index == currentIndex) {
@@ -480,30 +441,24 @@ class _ParaMediumScreenState extends State<ParaMediumScreen> {
               if (index == currentIndex) {
                 final ayah = ayahs[ayahIndex];
                 print(
-                    "Rendering index $index: Surah $surahNumber, Ayah ${ayahIndex + 1}, IsNull: ${ayah == null}");
-                if (ayah == null) {
-                  return const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 8.0),
-                    child: Center(child: CircularProgressIndicator()),
-                  );
-                }
+                    "Rendering index $index: Surah $surahNumber, Ayah ${ayahIndex + 1}");
                 return AyahCard(
                   index: ayahIndex + 1,
                   arabicText: ayah['arabic_text'] ?? 'No text available',
-                  translationText:
-                  ayah['translation_text'] ?? 'No translation available',
+                  translationText: ayah['translation_text'] ?? 'No translation available',
                   showTranslation: showTranslation,
                   isLastRead: widget.lastReadSurah == surahNumber &&
                       widget.lastReadAyah == (ayahIndex + 1),
                   arabicFontSize: arabicFontSize,
                   translationFontSize: translationFontSize,
+                  ayahEndSignFontSize: ayahEndSignFontSize,
                   onLongPress: () {
                     showDialog(
                       context: context,
                       builder: (context) => AlertDialog(
                         title: Text('Ayah ${ayahIndex + 1}'),
-                        content: const Text(
-                            'Do you want to set this ayah as your last read?'),
+                        content:
+                        const Text('Do you want to set this ayah as your last read?'),
                         actions: [
                           TextButton(
                             onPressed: () {
@@ -552,7 +507,6 @@ class SurahInfoCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
-    final screenHeight = MediaQuery.of(context).size.height;
 
     final surahName = surahInfo['surah_name'] ?? 'Unknown Surah';
     final arabicName = surahInfo['arabic_name'] ?? 'Unknown Arabic Name';
@@ -652,6 +606,7 @@ class AyahCard extends StatelessWidget {
   final bool isLastRead;
   final double arabicFontSize;
   final double translationFontSize;
+  final double ayahEndSignFontSize;
   final VoidCallback onLongPress;
 
   const AyahCard({
@@ -664,6 +619,7 @@ class AyahCard extends StatelessWidget {
     this.isLastRead = false,
     required this.arabicFontSize,
     required this.translationFontSize,
+    required this.ayahEndSignFontSize,
   }) : super(key: key);
 
   @override
@@ -716,7 +672,7 @@ class AyahCard extends StatelessWidget {
                         style: TextStyle(
                           fontFamily: 'NotoNaskhArabic',
                           color: Colors.black,
-                          fontSize: 14,
+                          fontSize: ayahEndSignFontSize,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
