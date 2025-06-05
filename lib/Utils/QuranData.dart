@@ -1,6 +1,6 @@
 class QuranData {
   static const List<Map<String, dynamic>> surahRanges = [
-    {"surah_number": 1, "name": "Al-Fatihah", "arabic_name": "الْفَاتِحَة", "verse_count": 7, "start_ayah": 2, "end_ayah": 7},
+    {"surah_number": 1, "name": "Al-Fatihah", "arabic_name": "الْفَاتِحَة", "verse_count": 6, "start_ayah": 2, "end_ayah": 6},
     {"surah_number": 2, "name": "Al-Baqarah", "arabic_name": "الْبَقَرَة", "verse_count": 286, "start_ayah": 8, "end_ayah": 293},
     {"surah_number": 3, "name": "Aal-E-Imran", "arabic_name": "آلِ عِمْرَان", "verse_count": 200, "start_ayah": 294, "end_ayah": 493},
     {"surah_number": 4, "name": "An-Nisa", "arabic_name": "النِّسَاء", "verse_count": 176, "start_ayah": 494, "end_ayah": 669},
@@ -126,7 +126,7 @@ class QuranData {
           "surah_number": 1,
           "surah_name": "Al-Fatihah",
           "arabic_name": "الْفَاتِحَة",
-          "start_ayah": 2,
+          "start_ayah": 3,
           "end_ayah": 7,
           "verses_in_para": 6
         },

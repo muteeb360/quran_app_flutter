@@ -29,6 +29,8 @@ class _SurahMediumScreenState extends State<SurahMediumScreen> {
   int surahStart = 1;
   int totalAyahs = 0;
   int lastReadAyahIndex = 0; // 0-based index of last read Ayah
+  double arabicFontSize = 22.0; // Default Arabic text size
+  double translationFontSize = 14.0; // Default translation text size
 
   @override
   void initState() {
@@ -49,7 +51,9 @@ class _SurahMediumScreenState extends State<SurahMediumScreen> {
       ayahs = List<Map<String, dynamic>?>.filled(totalAyahs, null);
 
       // Determine last read Ayah (default to 1 if invalid)
-      int lastReadAyah = widget.lastReadAyah != null && widget.lastReadAyah! > 0 && widget.lastReadAyah! <= totalAyahs
+      int lastReadAyah = widget.lastReadAyah != null &&
+          widget.lastReadAyah! > 0 &&
+          widget.lastReadAyah! <= totalAyahs
           ? widget.lastReadAyah!
           : 1;
       lastReadAyahIndex = lastReadAyah - 1; // 0-based
@@ -212,15 +216,119 @@ class _SurahMediumScreenState extends State<SurahMediumScreen> {
     }
   }
 
-  @override
-  void dispose() {
-    super.dispose();
-  }
-
   void _toggleTranslation() {
     setState(() {
       showTranslation = !showTranslation;
     });
+  }
+
+  void _showFontSizeDialog() {
+    double tempArabicFontSize = arabicFontSize;
+    double tempTranslationFontSize = translationFontSize;
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          'Adjust Font Sizes',
+          style: GoogleFonts.poppins(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        content: StatefulBuilder(
+          builder: (context, setDialogState) {
+            return SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Arabic Text Size: ${tempArabicFontSize.round()}',
+                    style: GoogleFonts.poppins(fontSize: 14),
+                  ),
+                  Slider(
+                    value: tempArabicFontSize,
+                    min: 12.0,
+                    max: 40.0,
+                    divisions: 14,
+                    label: tempArabicFontSize.round().toString(),
+                    onChanged: (value) {
+                      setDialogState(() {
+                        tempArabicFontSize = value;
+                      });
+                    },
+                  ),
+                  Text(
+                    'Translation Text Size: ${tempTranslationFontSize.round()}',
+                    style: GoogleFonts.poppins(fontSize: 14),
+                  ),
+                  Slider(
+                    value: tempTranslationFontSize,
+                    min: 10.0,
+                    max: 30.0,
+                    divisions: 10,
+                    label: tempTranslationFontSize.round().toString(),
+                    onChanged: (value) {
+                      setDialogState(() {
+                        tempTranslationFontSize = value;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Preview:',
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  AyahCard(
+                    index: 0,
+                    displayAyahNumber: 1,
+                    arabicText: 'الْحَمْدُ لِلَّهِ رَبِّ الْعَالَمِينَ',
+                    translationText: 'تمام تعریفیں اللہ کے لیے ہیں جو تمام جہانوں کا رب ہے',
+                    showTranslation: showTranslation,
+                    isLastRead: false,
+                    arabicFontSize: tempArabicFontSize,
+                    translationFontSize: tempTranslationFontSize,
+                    onLongPress: () {}, // No action for preview
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Cancel',
+              style: GoogleFonts.poppins(fontSize: 14),
+            ),
+          ),
+          TextButton(
+            onPressed: () {
+              setState(() {
+                arabicFontSize = tempArabicFontSize;
+                translationFontSize = tempTranslationFontSize;
+              });
+              Navigator.pop(context);
+            },
+            child: Text(
+              'Apply',
+              style: GoogleFonts.poppins(fontSize: 14),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
   }
 
   @override
@@ -273,6 +381,8 @@ class _SurahMediumScreenState extends State<SurahMediumScreen> {
             onSelected: (value) {
               if (value == 'toggle_translation') {
                 _toggleTranslation();
+              } else if (value == 'adjust_font_size') {
+                _showFontSizeDialog();
               }
             },
             itemBuilder: (BuildContext context) {
@@ -281,6 +391,16 @@ class _SurahMediumScreenState extends State<SurahMediumScreen> {
                   value: 'toggle_translation',
                   child: Text(
                     showTranslation ? 'Turn Translation Off' : 'Turn Translation On',
+                    style: GoogleFonts.poppins(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+                PopupMenuItem<String>(
+                  value: 'adjust_font_size',
+                  child: Text(
+                    'Adjust Font Size',
                     style: GoogleFonts.poppins(
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
@@ -300,7 +420,8 @@ class _SurahMediumScreenState extends State<SurahMediumScreen> {
           : ScrollablePositionedList.builder(
         itemScrollController: _scrollController,
         padding: EdgeInsets.symmetric(
-            vertical: screenHeight * 0.02, horizontal: screenWidth * 0.05),
+            vertical: screenHeight * 0.02,
+            horizontal: screenWidth * 0.05),
         itemCount: totalAyahs + 1, // +1 for header
         itemBuilder: (context, index) {
           if (index == 0) {
@@ -324,9 +445,11 @@ class _SurahMediumScreenState extends State<SurahMediumScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Padding(
-                      padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.05),
+                      padding: EdgeInsets.symmetric(
+                          horizontal: screenWidth * 0.05),
                       child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        mainAxisAlignment:
+                        MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
                             "Ayats: $totalAyahs",
@@ -370,7 +493,8 @@ class _SurahMediumScreenState extends State<SurahMediumScreen> {
                             const SizedBox(height: 8),
                             const Text(
                               "شروع اللہ کے نام سے جو بڑا مہربان نہایت رحم والا ہے",
-                              style: TextStyle(color: Colors.white, fontSize: 13),
+                              style: TextStyle(
+                                  color: Colors.white, fontSize: 13),
                               textDirection: TextDirection.rtl,
                             ),
                           ],
@@ -396,15 +520,19 @@ class _SurahMediumScreenState extends State<SurahMediumScreen> {
               index: ayahIndex, // 0-based
               displayAyahNumber: ayahIndex + 1, // 1-based
               arabicText: ayah['arabic_text'] ?? 'No text available',
-              translationText: ayah['translation_text'] ?? 'No translation available',
+              translationText:
+              ayah['translation_text'] ?? 'No translation available',
               showTranslation: showTranslation,
               isLastRead: ayahIndex + 1 == (widget.lastReadAyah ?? 1),
+              arabicFontSize: arabicFontSize,
+              translationFontSize: translationFontSize,
               onLongPress: () {
                 showDialog(
                   context: context,
                   builder: (context) => AlertDialog(
                     title: Text('Ayah ${ayahIndex + 1}'),
-                    content: const Text('Do you want to set this ayah as your last read?'),
+                    content: const Text(
+                        'Do you want to set this ayah as your last read?'),
                     actions: [
                       TextButton(
                         onPressed: () {
@@ -438,6 +566,8 @@ class AyahCard extends StatelessWidget {
   final String translationText;
   final bool showTranslation;
   final bool isLastRead;
+  final double arabicFontSize;
+  final double translationFontSize;
   final VoidCallback onLongPress;
 
   const AyahCard({
@@ -448,6 +578,8 @@ class AyahCard extends StatelessWidget {
     required this.translationText,
     required this.showTranslation,
     required this.onLongPress,
+    required this.arabicFontSize,
+    required this.translationFontSize,
     this.isLastRead = false,
   }) : super(key: key);
 
@@ -483,22 +615,39 @@ class AyahCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 8),
-                Text(
-                  arabicText,
-                  style: const TextStyle(
-                    color: Colors.black,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
+                RichText(
                   textDirection: TextDirection.rtl,
+                  text: TextSpan(
+                    children: [
+                      TextSpan(
+                        text: arabicText,
+                        style: TextStyle(
+                          fontFamily: 'NotoNaskhArabic',
+                          color: Colors.black,
+                          fontSize: arabicFontSize,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      TextSpan(
+                        text: ' ۝',
+                        style: TextStyle(
+                          fontFamily: 'NotoNaskhArabic',
+                          color: Colors.black,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 if (showTranslation) ...[
                   const SizedBox(height: 8),
                   Text(
                     translationText,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: AppColors.main,
-                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      fontSize: translationFontSize,
                     ),
                     textDirection: TextDirection.rtl,
                   ),

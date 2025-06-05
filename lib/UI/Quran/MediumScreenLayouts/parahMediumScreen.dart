@@ -28,6 +28,8 @@ class _ParaMediumScreenState extends State<ParaMediumScreen> {
   bool showTranslation = true;
   final ItemScrollController _scrollController = ItemScrollController();
   int lastReadIndex = 0;
+  double arabicFontSize = 22.0; // Default Arabic text size
+  double translationFontSize = 14.0; // Default translation text size
 
   @override
   void initState() {
@@ -58,7 +60,6 @@ class _ParaMediumScreenState extends State<ParaMediumScreen> {
         int? preloadEnd;
         if (widget.lastReadSurah == surahNumber && widget.lastReadAyah != null) {
           final lastReadAyah = widget.lastReadAyah!.clamp(1, verseCount);
-          // Preload ±5 Ayahs to show more placeholders
           preloadStart = (lastReadAyah - 5).clamp(1, verseCount);
           preloadEnd = (lastReadAyah + 5).clamp(1, verseCount);
           lastReadIndex = cumulativeIndex + 1 + (lastReadAyah - 1);
@@ -70,7 +71,6 @@ class _ParaMediumScreenState extends State<ParaMediumScreen> {
 
         List<Map<String, dynamic>?> ayahsList = List.filled(verseCount, null);
 
-        // Fetch preload range
         final List<Map<String, dynamic>> result = await db.query(
           'ayahs_table',
           where: 'id BETWEEN ? AND ?',
@@ -109,7 +109,8 @@ class _ParaMediumScreenState extends State<ParaMediumScreen> {
               index: lastReadIndex,
               alignment: 0.5,
             );
-            print("Scrolled to Surah ${widget.lastReadSurah}, Ayah ${widget.lastReadAyah} (index $lastReadIndex)");
+            print(
+                "Scrolled to Surah ${widget.lastReadSurah}, Ayah ${widget.lastReadAyah} (index $lastReadIndex)");
             Future.delayed(Duration(milliseconds: 200), () {
               if (_scrollController.isAttached) {
                 _scrollController.scrollTo(
@@ -141,14 +142,14 @@ class _ParaMediumScreenState extends State<ParaMediumScreen> {
   Future<void> _fetchRemainingAyahs() async {
     try {
       final db = await DatabaseHelper.database;
-      int chunkSize = 10; // Smaller chunks for faster updates
+      int chunkSize = 10;
 
       for (int s = 0; s < groupedAyahs.length; s++) {
         final surahData = groupedAyahs[s];
         final surahInfo = surahData['surah_info'];
         final surahNumber = surahInfo['surah_number'] as int? ?? 1;
         List<Map<String, dynamic>?> ayahsList = List.filled(surahData['ayahs'].length, null);
-        ayahsList.setAll(0, surahData['ayahs']); // Copy existing Ayahs
+        ayahsList.setAll(0, surahData['ayahs']);
         final startAyah = (surahInfo['start_ayah'] as num?)?.toInt() ?? 1;
         final endAyah = (surahInfo['end_ayah'] as num?)?.toInt() ?? 1;
         final startDbId = (surahInfo['start_db_id'] as num?)?.toInt() ?? 1;
@@ -160,12 +161,11 @@ class _ParaMediumScreenState extends State<ParaMediumScreen> {
           continue;
         }
 
-        // Fetch all null Ayahs in chunks
         for (int i = 0; i < verseCount; i += chunkSize) {
           int start = i + 1;
           int end = (i + chunkSize).clamp(1, verseCount);
           if (ayahsList.getRange(start - 1, end).every((ayah) => ayah != null)) {
-            continue; // Skip if chunk is fully loaded
+            continue;
           }
 
           print("Fetching Ayahs $start to $end for Surah $surahNumber");
@@ -188,7 +188,7 @@ class _ParaMediumScreenState extends State<ParaMediumScreen> {
             groupedAyahs[s]['ayahs'] = ayahsList;
           });
 
-          await Future.delayed(Duration(milliseconds: 50)); // Faster updates
+          await Future.delayed(Duration(milliseconds: 50));
         }
       }
     } catch (e) {
@@ -236,6 +236,123 @@ class _ParaMediumScreenState extends State<ParaMediumScreen> {
     setState(() {
       showTranslation = !showTranslation;
     });
+  }
+
+  void _showFontSizeDialog() {
+    double tempArabicFontSize = arabicFontSize;
+    double tempTranslationFontSize = translationFontSize;
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text(
+          'Adjust Font Sizes',
+          style: TextStyle(
+            fontFamily: 'Poppins',
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        content: StatefulBuilder(
+          builder: (context, setDialogState) {
+            return SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Arabic Text Size:',
+                    style: TextStyle(
+                      fontFamily: 'Poppins',
+                      fontSize: 14,
+                    ),
+                  ),
+                  Slider(
+                    value: tempArabicFontSize,
+                    min: 12.0,
+                    max: 40.0,
+                    divisions: 14,
+                    label: tempArabicFontSize.round().toString(),
+                    onChanged: (value) {
+                      setDialogState(() {
+                        tempArabicFontSize = value;
+                      });
+                    },
+                  ),
+                  const Text(
+                    'Translation Text Size:',
+                    style: TextStyle(
+                      fontFamily: 'Poppins',
+                      fontSize: 14,
+                    ),
+                  ),
+                  Slider(
+                    value: tempTranslationFontSize,
+                    min: 10.0,
+                    max: 30.0,
+                    divisions: 10,
+                    label: tempTranslationFontSize.round().toString(),
+                    onChanged: (value) {
+                      setDialogState(() {
+                        tempTranslationFontSize = value;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Preview:',
+                    style: TextStyle(
+                      fontFamily: 'Poppins',
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  AyahCard(
+                    index: 1,
+                    arabicText: 'الْحَمْدُ لِلَّهِ رَبِّ الْعَالَمِينَ',
+                    translationText: 'تمام تعریفیں اللہ کے لیے ہیں جو تمام جہانوں کا رب ہے',
+                    showTranslation: showTranslation,
+                    isLastRead: false,
+                    arabicFontSize: tempArabicFontSize,
+                    translationFontSize: tempTranslationFontSize,
+                    onLongPress: () {}, // No action for preview
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontSize: 14,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () {
+              setState(() {
+                arabicFontSize = tempArabicFontSize;
+                translationFontSize = tempTranslationFontSize;
+              });
+              Navigator.pop(context);
+            },
+            child: const Text(
+              'Apply',
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontSize: 14,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -294,6 +411,8 @@ class _ParaMediumScreenState extends State<ParaMediumScreen> {
             onSelected: (value) {
               if (value == 'toggle_translation') {
                 _toggleTranslation();
+              } else if (value == 'adjust_font_size') {
+                _showFontSizeDialog();
               }
             },
             itemBuilder: (BuildContext context) {
@@ -302,6 +421,17 @@ class _ParaMediumScreenState extends State<ParaMediumScreen> {
                   value: 'toggle_translation',
                   child: Text(
                     showTranslation ? 'Turn Translation Off' : 'Turn Translation On',
+                    style: const TextStyle(
+                      fontFamily: 'Poppins',
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+                PopupMenuItem<String>(
+                  value: 'adjust_font_size',
+                  child: Text(
+                    'Adjust Font Size',
                     style: const TextStyle(
                       fontFamily: 'Poppins',
                       fontSize: 16,
@@ -322,7 +452,8 @@ class _ParaMediumScreenState extends State<ParaMediumScreen> {
           : ScrollablePositionedList.builder(
         itemScrollController: _scrollController,
         padding: EdgeInsets.symmetric(
-            vertical: screenHeight * 0.02, horizontal: screenWidth * 0.05),
+            vertical: screenHeight * 0.02,
+            horizontal: screenWidth * 0.05),
         itemCount: totalItems,
         itemBuilder: (context, index) {
           int currentIndex = 0;
@@ -348,7 +479,8 @@ class _ParaMediumScreenState extends State<ParaMediumScreen> {
             for (int ayahIndex = 0; ayahIndex < ayahs.length; ayahIndex++) {
               if (index == currentIndex) {
                 final ayah = ayahs[ayahIndex];
-                print("Rendering index $index: Surah $surahNumber, Ayah ${ayahIndex + 1}, IsNull: ${ayah == null}");
+                print(
+                    "Rendering index $index: Surah $surahNumber, Ayah ${ayahIndex + 1}, IsNull: ${ayah == null}");
                 if (ayah == null) {
                   return const Padding(
                     padding: EdgeInsets.symmetric(vertical: 8.0),
@@ -358,16 +490,20 @@ class _ParaMediumScreenState extends State<ParaMediumScreen> {
                 return AyahCard(
                   index: ayahIndex + 1,
                   arabicText: ayah['arabic_text'] ?? 'No text available',
-                  translationText: ayah['translation_text'] ?? 'No translation available',
+                  translationText:
+                  ayah['translation_text'] ?? 'No translation available',
                   showTranslation: showTranslation,
                   isLastRead: widget.lastReadSurah == surahNumber &&
                       widget.lastReadAyah == (ayahIndex + 1),
+                  arabicFontSize: arabicFontSize,
+                  translationFontSize: translationFontSize,
                   onLongPress: () {
                     showDialog(
                       context: context,
                       builder: (context) => AlertDialog(
                         title: Text('Ayah ${ayahIndex + 1}'),
-                        content: const Text('Do you want to set this ayah as your last read?'),
+                        content: const Text(
+                            'Do you want to set this ayah as your last read?'),
                         actions: [
                           TextButton(
                             onPressed: () {
@@ -514,6 +650,8 @@ class AyahCard extends StatelessWidget {
   final String translationText;
   final bool showTranslation;
   final bool isLastRead;
+  final double arabicFontSize;
+  final double translationFontSize;
   final VoidCallback onLongPress;
 
   const AyahCard({
@@ -524,6 +662,8 @@ class AyahCard extends StatelessWidget {
     required this.showTranslation,
     required this.onLongPress,
     this.isLastRead = false,
+    required this.arabicFontSize,
+    required this.translationFontSize,
   }) : super(key: key);
 
   @override
@@ -539,8 +679,7 @@ class AyahCard extends StatelessWidget {
         child: Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(10),
-            color: isLastRead ? Colors.green.withOpacity(0.1
-            ) : Colors.white,
+            color: isLastRead ? Colors.green.withOpacity(0.1) : Colors.white,
           ),
           child: Padding(
             padding: const EdgeInsets.all(16.0),
@@ -559,24 +698,40 @@ class AyahCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 8),
-                Text(
-                  arabicText,
-                  style: const TextStyle(
-                    fontFamily: 'NotoNaskhArabic',
-                    color: Colors.black,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
+                RichText(
                   textDirection: TextDirection.rtl,
+                  text: TextSpan(
+                    children: [
+                      TextSpan(
+                        text: arabicText,
+                        style: TextStyle(
+                          fontFamily: 'NotoNaskhArabic',
+                          color: Colors.black,
+                          fontSize: arabicFontSize,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      TextSpan(
+                        text: ' ۝',
+                        style: TextStyle(
+                          fontFamily: 'NotoNaskhArabic',
+                          color: Colors.black,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 if (showTranslation) ...[
                   const SizedBox(height: 8),
                   Text(
                     translationText,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: 'Poppins',
+                      fontWeight: FontWeight.bold,
                       color: AppColors.main,
-                      fontSize: 14,
+                      fontSize: translationFontSize,
                     ),
                     textDirection: TextDirection.rtl,
                   ),

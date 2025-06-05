@@ -50,6 +50,7 @@ class NabiNamesScreenMedium extends StatelessWidget {
             // Swipeable horizontal list of cards
             Expanded(
               child: PageView.builder(
+                reverse: true,
                 itemCount: asmaMuhammad.length,
                 itemBuilder: (context, index) {
                   final name = asmaMuhammad[index];

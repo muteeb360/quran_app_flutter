@@ -49,6 +49,7 @@ class AsmaUlHusnaScreenMedium extends StatelessWidget {
             // Swipeable horizontal list of cards
             Expanded(
               child: PageView.builder(
+                reverse: true,
                 itemCount: asmaUlHusna.length,
                 itemBuilder: (context, index) {
                   final name = asmaUlHusna[index];
