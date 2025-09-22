@@ -8,7 +8,6 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../Utils/chat_service.dart';
 
-
 // Message model to store chat history
 class ChatMessage {
   final String text;
@@ -35,7 +34,7 @@ class ChatMessage {
 }
 
 class ChatbotMediumScreen extends StatefulWidget {
-  final ChatService chatService; // Your existing chat service
+  final ChatService chatService; // Using the enhanced chat service
 
   const ChatbotMediumScreen({Key? key, required this.chatService}) : super(key: key);
 
@@ -63,7 +62,13 @@ class _ChatbotMediumScreenState extends State<ChatbotMediumScreen>
       duration: const Duration(milliseconds: 400),
       vsync: this,
     );
+
+    // Load both UI history and service conversation history
     _loadChatHistory();
+    widget.chatService.loadConversationHistory();
+
+    // Start the typing animation
+    _fadeController.repeat();
   }
 
   @override
@@ -99,10 +104,11 @@ class _ChatbotMediumScreenState extends State<ChatbotMediumScreen>
     await prefs.setString('chat_history', historyJson);
   }
 
-  // Clear chat history
+  // Clear chat history (updated to clear both UI and service history)
   Future<void> _clearHistory() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('chat_history');
+    await widget.chatService.clearConversation();
     setState(() {
       _messages.clear();
     });
@@ -113,7 +119,7 @@ class _ChatbotMediumScreenState extends State<ChatbotMediumScreen>
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
           _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
+          duration: const Duration(milliseconds: 200),
           curve: Curves.easeOut,
         );
       }
@@ -167,107 +173,236 @@ class _ChatbotMediumScreenState extends State<ChatbotMediumScreen>
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
-      appBar: AppBar(
-        elevation: 0,
-        backgroundColor: const Color(0xFF2E7D32),
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: const BoxDecoration(
-                color: Colors.white24,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.mosque,
-                color: Colors.white,
-                size: 20,
-              ),
+  // Updated AppBar with conversation stats
+  AppBar _buildAppBar() {
+    return AppBar(
+      elevation: 0,
+      backgroundColor: const Color(0xFF2E7D32),
+      title: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: const BoxDecoration(
+              color: Colors.white24,
+              shape: BoxShape.circle,
             ),
-            const SizedBox(width: 12),
-            const Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Islamic Assistant',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
+            child: const Icon(
+              Icons.mosque,
+              color: Colors.white,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
+          const Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Islamic Assistant',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
                 ),
-                Text(
-                  'Ask about Islam',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 12,
-                  ),
+              ),
+              Text(
+                'Ask about Islam',
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 12,
                 ),
-              ],
+              ),
+            ],
+          ),
+        ],
+      ),
+      actions: [
+        // Conversation stats button
+        IconButton(
+          icon: const Icon(Icons.info_outline, color: Colors.white),
+          onPressed: () => _showConversationStats(),
+        ),
+        // Clear history button
+        IconButton(
+          icon: const Icon(Icons.delete_outline, color: Colors.white),
+          onPressed: () {
+            showDialog(
+              context: context,
+              builder: (context) => AlertDialog(
+                title: const Text('Clear Chat History'),
+                content: const Text(
+                    'This will clear all messages and conversation memory. Are you sure?'
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Cancel'),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      _clearHistory();
+                      Navigator.pop(context);
+                    },
+                    child: const Text('Clear All'),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  // Show conversation stats dialog
+  void _showConversationStats() {
+    final stats = widget.chatService.getConversationStats();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.analytics_outlined, color: Color(0xFF2E7D32)),
+            SizedBox(width: 8),
+            Text('Conversation Memory'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildStatRow('Total Messages:', '${stats['totalMessages']}'),
+            _buildStatRow('Has Summary:', stats['hasSummary'] ? 'Yes' : 'No'),
+            if (stats['hasSummary'])
+              _buildStatRow('Summary Length:', '${stats['summaryLength']} chars'),
+            const SizedBox(height: 12),
+            const Text(
+              'The AI maintains conversation context using automatic summarization when the history gets long.',
+              style: TextStyle(fontSize: 13, color: Colors.grey),
             ),
           ],
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.delete_outline, color: Colors.white),
-            onPressed: () {
-              showDialog(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: const Text('Clear Chat History'),
-                  content: const Text('Are you sure you want to clear all messages?'),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text('Cancel'),
-                    ),
-                    TextButton(
-                      onPressed: () {
-                        _clearHistory();
-                        Navigator.pop(context);
-                      },
-                      child: const Text('Clear'),
-                    ),
-                  ],
-                ),
-              );
-            },
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
           ),
-        ],
-      ),
-      body: Column(
-        children: [
-          // Messages List
-          Expanded(
-            child: _messages.isEmpty
-                ? _buildWelcomeScreen()
-                : ListView.builder(
-              controller: _scrollController,
-              padding: const EdgeInsets.all(16),
-              itemCount: _messages.length + (_isTyping ? 1 : 0),
-              itemBuilder: (context, index) {
-                if (index == _messages.length && _isTyping) {
-                  return _buildTypingIndicator();
-                }
-                return _buildMessageBubble(_messages[index]);
+          if (stats['totalMessages'] > 0)
+            TextButton(
+              onPressed: () async {
+                final export = await widget.chatService.exportConversation();
+                Navigator.pop(context);
+                _showExportDialog(export);
               },
+              child: const Text('Export'),
             ),
-          ),
-          // Input Area
-          _buildInputArea(),
         ],
       ),
     );
   }
 
+  Widget _buildStatRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: const TextStyle(fontWeight: FontWeight.w500)),
+          Text(value, style: const TextStyle(color: Color(0xFF2E7D32))),
+        ],
+      ),
+    );
+  }
+
+  void _showExportDialog(String exportData) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Conversation Export'),
+        content: SizedBox(
+          width: double.maxFinite,
+          height: 300,
+          child: SingleChildScrollView(
+            child: SelectableText(
+              exportData,
+              style: const TextStyle(fontSize: 12, fontFamily: 'monospace'),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Clipboard.setData(ClipboardData(text: exportData));
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Copied to clipboard!')),
+              );
+            },
+            child: const Text('Copy'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF5F7FA),
+      resizeToAvoidBottomInset: true,
+      appBar: _buildAppBar(),
+      body: GestureDetector(
+        onTap: () => FocusScope.of(context).unfocus(),
+        child: Column(
+          children: [
+            // Messages List
+            Expanded(
+              child: _messages.isEmpty
+                  ? _buildWelcomeScreen()
+                  : ListView.builder(
+                controller: _scrollController,
+                padding: EdgeInsets.only(
+                  left: 16,
+                  right: 16,
+                  top: 16,
+                  bottom: MediaQuery.of(context).viewInsets.bottom > 0 ? 8 : 16,
+                ),
+                itemCount: _messages.length + (_isTyping ? 1 : 0),
+                itemBuilder: (context, index) {
+                  if (index == _messages.length && _isTyping) {
+                    return _buildTypingIndicator();
+                  }
+                  return _buildMessageBubble(_messages[index]);
+                },
+              ),
+            ),
+            // Input Area
+            _buildInputArea(),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildWelcomeScreen() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
+    return SingleChildScrollView(
+      padding: EdgeInsets.only(
+        left: 32,
+        right: 32,
+        top: 32,
+        bottom: 32 + MediaQuery.of(context).viewInsets.bottom,
+      ),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          minHeight: MediaQuery.of(context).size.height -
+              MediaQuery.of(context).padding.top -
+              kToolbarHeight -
+              100, // Approximate input area height
+        ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -311,6 +446,8 @@ class _ChatbotMediumScreenState extends State<ChatbotMediumScreen>
             ),
             const SizedBox(height: 32),
             _buildSuggestedQuestions(),
+            // Add some extra space at the bottom when keyboard is visible
+            SizedBox(height: MediaQuery.of(context).viewInsets.bottom > 0 ? 20 : 0),
           ],
         ),
       ),
@@ -486,7 +623,7 @@ class _ChatbotMediumScreenState extends State<ChatbotMediumScreen>
                       ),
                       blockquoteDecoration: BoxDecoration(
                         color: Colors.grey[50],
-                        border: Border(
+                        border: const Border(
                           left: BorderSide(
                             color: Color(0xFF2E7D32),
                             width: 4,
@@ -607,8 +744,15 @@ class _ChatbotMediumScreenState extends State<ChatbotMediumScreen>
   }
 
   Widget _buildInputArea() {
-    return Container(
-      padding: const EdgeInsets.all(16),
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeInOut,
+      padding: EdgeInsets.only(
+        left: 16,
+        right: 16,
+        top: 16,
+        bottom: 16 + MediaQuery.of(context).viewInsets.bottom,
+      ),
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [
@@ -620,6 +764,7 @@ class _ChatbotMediumScreenState extends State<ChatbotMediumScreen>
         ],
       ),
       child: SafeArea(
+        top: false,
         child: Row(
           children: [
             Expanded(
@@ -644,6 +789,14 @@ class _ChatbotMediumScreenState extends State<ChatbotMediumScreen>
                   maxLines: null,
                   textCapitalization: TextCapitalization.sentences,
                   onSubmitted: (_) => _sendMessage(),
+                  onChanged: (text) {
+                    // Auto-scroll when typing
+                    if (_messages.isNotEmpty) {
+                      Future.delayed(const Duration(milliseconds: 100), () {
+                        _scrollToBottom();
+                      });
+                    }
+                  },
                 ),
               ),
             ),
@@ -687,3 +840,6 @@ class _ChatbotMediumScreenState extends State<ChatbotMediumScreen>
 // shared_preferences: ^2.0.15
 // flutter_markdown: ^0.6.18
 // url_launcher: ^6.2.1
+
+// Usage:
+// IslamicChatScreen(chatService: EnhancedChatService())
