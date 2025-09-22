@@ -140,7 +140,8 @@ class QuranData {
         },
       ],
       "start_ayah": 2,
-      "end_ayah": 148
+      "end_ayah": 148,
+      "total_verses": 147
     },
     {
       "para_number": 2,
@@ -157,7 +158,8 @@ class QuranData {
         },
       ],
       "start_ayah": 149,
-      "end_ayah": 259
+      "end_ayah": 259,
+      "total_verses": 111
     },
     {
       "para_number": 3,
@@ -182,7 +184,8 @@ class QuranData {
         },
       ],
       "start_ayah": 260,
-      "end_ayah": 384
+      "end_ayah": 384,
+      "total_verses": 125
     },
     {
       "para_number": 4,
@@ -207,7 +210,8 @@ class QuranData {
         },
       ],
       "start_ayah": 385,
-      "end_ayah": 515
+      "end_ayah": 515,
+      "total_verses": 131
     },
     {
       "para_number": 5,
@@ -224,7 +228,8 @@ class QuranData {
         },
       ],
       "start_ayah": 516,
-      "end_ayah": 663
+      "end_ayah": 663,
+      "total_verses": 148
     },
     {
       "para_number": 6,
@@ -249,7 +254,8 @@ class QuranData {
         },
       ],
       "start_ayah": 664,
-      "end_ayah": 789
+      "end_ayah": 789,
+      "total_verses": 126
     },
     {
       "para_number": 7,
@@ -266,7 +272,8 @@ class QuranData {
         },
       ],
       "start_ayah": 790,
-      "end_ayah": 954
+      "end_ayah": 954,
+      "total_verses": 165
     },
     {
       "para_number": 8,
@@ -283,7 +290,8 @@ class QuranData {
         },
       ],
       "start_ayah": 955,
-      "end_ayah": 1102
+      "end_ayah": 1102,
+      "total_verses": 148
     },
     {
       "para_number": 9,
@@ -308,7 +316,8 @@ class QuranData {
         },
       ],
       "start_ayah": 1103,
-      "end_ayah": 1235
+      "end_ayah": 1235,
+      "total_verses": 133
     },
     {
       "para_number": 10,
@@ -325,7 +334,8 @@ class QuranData {
         },
       ],
       "start_ayah": 1236,
-      "end_ayah": 1364
+      "end_ayah": 1364,
+      "total_verses": 129
     },
     {
       "para_number": 11,
@@ -350,7 +360,8 @@ class QuranData {
         },
       ],
       "start_ayah": 1365,
-      "end_ayah": 1517
+      "end_ayah": 1517,
+      "total_verses": 153
     },
     {
       "para_number": 12,
@@ -375,7 +386,8 @@ class QuranData {
         },
       ],
       "start_ayah": 1518,
-      "end_ayah": 1707
+      "end_ayah": 1707,
+      "total_verses": 190
     },
     {
       "para_number": 13,
@@ -408,7 +420,8 @@ class QuranData {
         },
       ],
       "start_ayah": 1708,
-      "end_ayah": 1901
+      "end_ayah": 1901,
+      "total_verses": 194
     },
     {
       "para_number": 14,
@@ -433,7 +446,8 @@ class QuranData {
         },
       ],
       "start_ayah": 1902,
-      "end_ayah": 2140
+      "end_ayah": 2140,
+      "total_verses": 239
     },
     {
       "para_number": 15,
@@ -458,7 +472,8 @@ class QuranData {
         },
       ],
       "start_ayah": 2141,
-      "end_ayah": 2348
+      "end_ayah": 2348,
+      "total_verses": 208
     },
     {
       "para_number": 16,
@@ -483,7 +498,8 @@ class QuranData {
         },
       ],
       "start_ayah": 2349,
-      "end_ayah": 2595
+      "end_ayah": 2595,
+      "total_verses": 247
     },
     {
       "para_number": 17,
@@ -508,7 +524,8 @@ class QuranData {
         },
       ],
       "start_ayah": 2596,
-      "end_ayah": 2791
+      "end_ayah": 2791,
+      "total_verses": 196
     },
     {
       "para_number": 18,
@@ -541,7 +558,8 @@ class QuranData {
         },
       ],
       "start_ayah": 2792,
-      "end_ayah": 3005
+      "end_ayah": 3005,
+      "total_verses": 214
     },
     {
       "para_number": 19,
@@ -566,7 +584,8 @@ class QuranData {
         },
       ],
       "start_ayah": 3006,
-      "end_ayah": 3252
+      "end_ayah": 3252,
+      "total_verses": 247
     },
     {
       "para_number": 20,
@@ -615,7 +634,8 @@ class QuranData {
         },
       ],
       "start_ayah": 3253,
-      "end_ayah": 3533
+      "end_ayah": 3533,
+      "total_verses": 281
     },
     {
       "para_number": 21,
@@ -656,7 +676,8 @@ class QuranData {
         },
       ],
       "start_ayah": 3534,
-      "end_ayah": 3788
+      "end_ayah": 3788,
+      "total_verses": 255
     },
     {
       "para_number": 22,
@@ -681,7 +702,8 @@ class QuranData {
         },
       ],
       "start_ayah": 3789,
-      "end_ayah": 4058
+      "end_ayah": 4058,
+      "total_verses": 270
     },
     {
       "para_number": 23,
@@ -722,7 +744,8 @@ class QuranData {
         },
       ],
       "start_ayah": 4059,
-      "end_ayah": 4325
+      "end_ayah": 4325,
+      "total_verses": 267
     },
     {
       "para_number": 24,
@@ -779,7 +802,8 @@ class QuranData {
         },
       ],
       "start_ayah": 4326,
-      "end_ayah": 4604
+      "end_ayah": 4604,
+      "total_verses": 279
     },
     {
       "para_number": 25,
@@ -844,7 +868,8 @@ class QuranData {
         },
       ],
       "start_ayah": 4605,
-      "end_ayah": 4901
+      "end_ayah": 4901,
+      "total_verses": 297
     },
     {
       "para_number": 26,
@@ -893,7 +918,8 @@ class QuranData {
         },
       ],
       "start_ayah": 4902,
-      "end_ayah": 5150
+      "end_ayah": 5150,
+      "total_verses": 249
     },
     {
       "para_number": 27,
@@ -990,7 +1016,8 @@ class QuranData {
         },
       ],
       "start_ayah": 5151,
-      "end_ayah": 5419
+      "end_ayah": 5419,
+      "total_verses": 269
     },
     {
       "para_number": 28,
@@ -1055,7 +1082,8 @@ class QuranData {
         },
       ],
       "start_ayah": 5420,
-      "end_ayah": 5672
+      "end_ayah": 5672,
+      "total_verses": 253
     },
     {
       "para_number": 29,
@@ -1136,7 +1164,8 @@ class QuranData {
         },
       ],
       "start_ayah": 5673,
-      "end_ayah": 5948
+      "end_ayah": 5948,
+      "total_verses": 276
     },
     {
       "para_number": 30,
@@ -1369,7 +1398,8 @@ class QuranData {
         },
       ],
       "start_ayah": 5949,
-      "end_ayah": 6236
+      "end_ayah": 6236,
+      "total_verses": 288
     },
   ];
 
@@ -1385,7 +1415,8 @@ class QuranData {
     };
   }
 
-  // Method to get Ayah range for a given Surah
+
+  // Method to get Ayah range for a given Parah
   static Map<String, int> getParaRange(int paraNumber) {
     final surah = parahRanges.firstWhere((s) => s['para_number'] == paraNumber);
     return {
