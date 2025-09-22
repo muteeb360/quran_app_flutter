@@ -4,10 +4,12 @@ import 'package:flutter/widgets.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hidaya_app/UI/BottomNavLogicImplementation.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: "apikey.env");
   runApp(hidaya());
 }
 
@@ -28,7 +30,7 @@ class hidaya extends StatelessWidget {
       ),
       initialRoute: '/', // Starting route
       routes: {
-        '/': (context) => homescreen(),        // Home route
+        '/': (context) => homescreen(),   // Home route
       },
     );
   }

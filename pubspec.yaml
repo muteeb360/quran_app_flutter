@@ -42,7 +42,7 @@ dependencies:
   geocoding: ^3.0.0
   sqflite: ^2.4.2
   path_provider: ^2.1.5
-  http: ^1.4.0
+  http: ^1.5.0
   connectivity_plus: ^5.0.2
   adhan_dart: ^1.1.2
   shared_preferences: ^2.5.2
@@ -50,6 +50,9 @@ dependencies:
   flutter_pdfview: ^1.4.0+1
   syncfusion_flutter_pdfviewer: ^29.2.7
   scrollable_positioned_list: ^0.3.8
+  flutter_dotenv: ^6.0.0
+  flutter_markdown: ^0.7.7+1
+  url_launcher: ^6.3.2
 
 dev_dependencies:
   flutter_test:
@@ -103,6 +106,7 @@ flutter:
     - assets/icons/chat.svg
     - assets/icons/home.svg
     - assets/icons/quran.svg
+    - apikey.env
 
 
 

@@ -2,10 +2,12 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:hidaya_app/UI/ChatBot/MediumScreenLayouts/chatbotMediumScreen.dart';
 import 'package:hidaya_app/UI/Quran/MediumScreenLayouts/quranMediumScreenLayout.dart';
 import 'package:hidaya_app/UI/Home/MediumScreenLayouts/prayerTimesScreen.dart';
 import 'package:hidaya_app/UI/test.dart';
 import '../Utils/bottomnavigationbar.dart';
+import '../Utils/chat_service.dart';
 import '../Utils/colors.dart';
 import 'Home/MediumScreenLayouts/homeMediumScreenLayout.dart';
 import 'Quran/MediumScreenLayouts/surahMediumScreen.dart';
@@ -24,6 +26,7 @@ class _homescreenState extends State<homescreen> {
   final List<Widget> _screens = [
     HomeContent(),
     QuranContent(),
+    ChatbotContent(),
   ];
 
   void _onItemTapped(int index) {
@@ -101,6 +104,23 @@ class _QuranContentState extends State<QuranContent> {
   Widget build(BuildContext context) {
     return LayoutBuilder(builder: (context, constraints) {
       return QuranMediumScreen();
+    });
+  }
+}
+
+//Chatbot Screen Content
+class ChatbotContent extends StatefulWidget {
+  const ChatbotContent({super.key});
+
+  @override
+  State<ChatbotContent> createState() => _ChatbotContentState();
+}
+
+class _ChatbotContentState extends State<ChatbotContent> {
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(builder: (context, constraints) {
+      return ChatbotMediumScreen(chatService: ChatService(),);
     });
   }
 }
