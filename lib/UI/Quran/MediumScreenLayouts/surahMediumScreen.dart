@@ -5,6 +5,7 @@ import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import '../../../Utils/colors.dart';
 import '../../../Utils/QuranData.dart';
 import 'package:hidaya_app/Utils/DatabaseHelper.dart';
+import 'package:hidaya_app/repository/quran_repository.dart';
 
 class SurahMediumScreen extends StatefulWidget {
   final int surahNumber;
@@ -51,7 +52,8 @@ class _SurahMediumScreenState extends State<SurahMediumScreen> {
       ayahs = List<Map<String, dynamic>?>.filled(totalAyahs, null);
 
       // Determine last read Ayah (default to 1 if invalid)
-      int lastReadAyah = widget.lastReadAyah != null &&
+      int lastReadAyah =
+      widget.lastReadAyah != null &&
           widget.lastReadAyah! > 0 &&
           widget.lastReadAyah! <= totalAyahs
           ? widget.lastReadAyah!
@@ -90,7 +92,9 @@ class _SurahMediumScreenState extends State<SurahMediumScreen> {
             index: lastReadAyahIndex + 1, // +1 for header
             alignment: 0.5, // Center in viewport
           );
-          print("Scrolled to Ayah $lastReadAyah (index ${lastReadAyahIndex + 1})");
+          print(
+            "Scrolled to Ayah $lastReadAyah (index ${lastReadAyahIndex + 1})",
+          );
           // Animate for smoother transition
           Future.delayed(Duration(milliseconds: 100), () {
             if (_scrollController.isAttached) {
@@ -173,47 +177,20 @@ class _SurahMediumScreenState extends State<SurahMediumScreen> {
     }
   }
 
-  Future<void> _saveLastRead(int ayahIndex) async {
-    try {
-      final surahInfo = QuranData.surahRanges.firstWhere(
-            (surah) => surah['surah_number'] == widget.surahNumber,
-        orElse: () => {"name": "Unknown Surah"},
-      );
-      final surahName = surahInfo['name'] ?? 'Unknown Surah';
-      final arabicName = surahInfo['arabic_name'] ?? 'Unknown Arabic Name';
-      final int actualAyahNumber = ayahIndex + 1; // 1-based
-
-      final db = await DatabaseHelper.database;
-      await db.delete('last_read');
-      await db.insert(
-        'last_read',
-        {
-          'surah_number': widget.surahNumber,
-          'ayah_number': actualAyahNumber,
-          'surah_name': surahName,
-          'arabic_name': arabicName,
-          'timestamp': DateTime.now().millisecondsSinceEpoch,
-          'source': 'surah',
-        },
-        conflictAlgorithm: ConflictAlgorithm.replace,
-      );
-      print("Saved last read: Surah ${widget.surahNumber}, Ayah $actualAyahNumber");
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Last read updated: $surahName, Ayah $actualAyahNumber'),
-          duration: const Duration(seconds: 2),
-        ),
-      );
-    } catch (e) {
-      print("Failed to save last read: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Failed to update last read'),
-          duration: Duration(seconds: 2),
-        ),
-      );
-    }
+  void _saveLastRead(int ayahIndex) async {
+    final surahInfo = QuranData.surahRanges.firstWhere(
+          (surah) => surah['surah_number'] == widget.surahNumber,
+      orElse:
+          () => {"name": "Unknown Surah", "arabic_name": "Unknown Arabic Name"},
+    );
+    await QuranRepository.updateLastRead(
+      surahNumber: widget.surahNumber,
+      ayahIndex: ayahIndex,
+      surahName: surahInfo['name'] ?? 'Unknown Surah',
+      arabicName: surahInfo['arabic_name'] ?? 'Unknown Arabic Name',
+      source: 'surah',
+      context: context,
+    );
   }
 
   void _toggleTranslation() {
@@ -228,7 +205,8 @@ class _SurahMediumScreenState extends State<SurahMediumScreen> {
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder:
+          (context) => AlertDialog(
         title: Text(
           'Adjust Font Sizes',
           style: GoogleFonts.poppins(
@@ -288,7 +266,8 @@ class _SurahMediumScreenState extends State<SurahMediumScreen> {
                     index: 0,
                     displayAyahNumber: 1,
                     arabicText: 'الْحَمْدُ لِلَّهِ رَبِّ الْعَالَمِينَ',
-                    translationText: 'تمام تعریفیں اللہ کے لیے ہیں جو تمام جہانوں کا رب ہے',
+                    translationText:
+                    'تمام تعریفیں اللہ کے لیے ہیں جو تمام جہانوں کا رب ہے',
                     showTranslation: showTranslation,
                     isLastRead: false,
                     arabicFontSize: tempArabicFontSize,
@@ -303,10 +282,7 @@ class _SurahMediumScreenState extends State<SurahMediumScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text(
-              'Cancel',
-              style: GoogleFonts.poppins(fontSize: 14),
-            ),
+            child: Text('Cancel', style: GoogleFonts.poppins(fontSize: 14)),
           ),
           TextButton(
             onPressed: () {
@@ -316,10 +292,7 @@ class _SurahMediumScreenState extends State<SurahMediumScreen> {
               });
               Navigator.pop(context);
             },
-            child: Text(
-              'Apply',
-              style: GoogleFonts.poppins(fontSize: 14),
-            ),
+            child: Text('Apply', style: GoogleFonts.poppins(fontSize: 14)),
           ),
         ],
       ),
@@ -365,10 +338,7 @@ class _SurahMediumScreenState extends State<SurahMediumScreen> {
         flexibleSpace: Container(
           decoration: const BoxDecoration(
             gradient: LinearGradient(
-              colors: [
-                Color(0xFF44C17B),
-                Color(0xFF205B3A),
-              ],
+              colors: [Color(0xFF44C17B), Color(0xFF205B3A)],
               begin: Alignment.centerLeft,
               end: Alignment.centerRight,
             ),
@@ -390,7 +360,9 @@ class _SurahMediumScreenState extends State<SurahMediumScreen> {
                 PopupMenuItem<String>(
                   value: 'toggle_translation',
                   child: Text(
-                    showTranslation ? 'Turn Translation Off' : 'Turn Translation On',
+                    showTranslation
+                        ? 'Turn Translation Off'
+                        : 'Turn Translation On',
                     style: GoogleFonts.poppins(
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
@@ -413,15 +385,17 @@ class _SurahMediumScreenState extends State<SurahMediumScreen> {
         ],
       ),
       backgroundColor: AppColors.background,
-      body: isLoading
+      body:
+      isLoading
           ? const Center(child: CircularProgressIndicator())
           : errorMessage != null
           ? Center(child: Text(errorMessage!))
           : ScrollablePositionedList.builder(
         itemScrollController: _scrollController,
         padding: EdgeInsets.symmetric(
-            vertical: screenHeight * 0.02,
-            horizontal: screenWidth * 0.05),
+          vertical: screenHeight * 0.02,
+          horizontal: screenWidth * 0.05,
+        ),
         itemCount: totalAyahs + 1, // +1 for header
         itemBuilder: (context, index) {
           if (index == 0) {
@@ -433,10 +407,7 @@ class _SurahMediumScreenState extends State<SurahMediumScreen> {
                 gradient: const LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [
-                    Color(0xFF44C17B),
-                    Color(0xFF205B3A),
-                  ],
+                  colors: [Color(0xFF44C17B), Color(0xFF205B3A)],
                 ),
               ),
               child: Padding(
@@ -446,7 +417,8 @@ class _SurahMediumScreenState extends State<SurahMediumScreen> {
                   children: [
                     Padding(
                       padding: EdgeInsets.symmetric(
-                          horizontal: screenWidth * 0.05),
+                        horizontal: screenWidth * 0.05,
+                      ),
                       child: Row(
                         mainAxisAlignment:
                         MainAxisAlignment.spaceBetween,
@@ -494,7 +466,9 @@ class _SurahMediumScreenState extends State<SurahMediumScreen> {
                             const Text(
                               "شروع اللہ کے نام سے جو بڑا مہربان نہایت رحم والا ہے",
                               style: TextStyle(
-                                  color: Colors.white, fontSize: 13),
+                                color: Colors.white,
+                                fontSize: 13,
+                              ),
                               textDirection: TextDirection.rtl,
                             ),
                           ],
@@ -521,7 +495,8 @@ class _SurahMediumScreenState extends State<SurahMediumScreen> {
               displayAyahNumber: ayahIndex + 1, // 1-based
               arabicText: ayah['arabic_text'] ?? 'No text available',
               translationText:
-              ayah['translation_text'] ?? 'No translation available',
+              ayah['translation_text'] ??
+                  'No translation available',
               showTranslation: showTranslation,
               isLastRead: ayahIndex + 1 == (widget.lastReadAyah ?? 1),
               arabicFontSize: arabicFontSize,
@@ -529,10 +504,12 @@ class _SurahMediumScreenState extends State<SurahMediumScreen> {
               onLongPress: () {
                 showDialog(
                   context: context,
-                  builder: (context) => AlertDialog(
+                  builder:
+                      (context) => AlertDialog(
                     title: Text('Ayah ${ayahIndex + 1}'),
                     content: const Text(
-                        'Do you want to set this ayah as your last read?'),
+                      'Do you want to set this ayah as your last read?',
+                    ),
                     actions: [
                       TextButton(
                         onPressed: () {
@@ -589,9 +566,7 @@ class AyahCard extends StatelessWidget {
       onLongPress: onLongPress,
       child: Card(
         margin: const EdgeInsets.symmetric(vertical: 8.0),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         elevation: 4,
         child: Container(
           decoration: BoxDecoration(

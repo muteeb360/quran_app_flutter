@@ -161,6 +161,7 @@ class _ChatbotMediumScreenState extends State<ChatbotMediumScreen>
       _saveChatHistory();
       _scrollToBottom();
     } catch (e) {
+      print("Exception occured: $e");
       setState(() {
         _messages.add(ChatMessage(
           text: "Sorry, I couldn't process your message. Please try again.",
@@ -216,11 +217,6 @@ class _ChatbotMediumScreenState extends State<ChatbotMediumScreen>
         ],
       ),
       actions: [
-        // Conversation stats button
-        IconButton(
-          icon: const Icon(Icons.info_outline, color: Colors.white),
-          onPressed: () => _showConversationStats(),
-        ),
         // Clear history button
         IconButton(
           icon: const Icon(Icons.delete_outline, color: Colors.white),
@@ -250,54 +246,6 @@ class _ChatbotMediumScreenState extends State<ChatbotMediumScreen>
           },
         ),
       ],
-    );
-  }
-
-  // Show conversation stats dialog
-  void _showConversationStats() {
-    final stats = widget.chatService.getConversationStats();
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Row(
-          children: [
-            Icon(Icons.analytics_outlined, color: Color(0xFF2E7D32)),
-            SizedBox(width: 8),
-            Text('Conversation Memory'),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildStatRow('Total Messages:', '${stats['totalMessages']}'),
-            _buildStatRow('Has Summary:', stats['hasSummary'] ? 'Yes' : 'No'),
-            if (stats['hasSummary'])
-              _buildStatRow('Summary Length:', '${stats['summaryLength']} chars'),
-            const SizedBox(height: 12),
-            const Text(
-              'The AI maintains conversation context using automatic summarization when the history gets long.',
-              style: TextStyle(fontSize: 13, color: Colors.grey),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-          if (stats['totalMessages'] > 0)
-            TextButton(
-              onPressed: () async {
-                final export = await widget.chatService.exportConversation();
-                Navigator.pop(context);
-                _showExportDialog(export);
-              },
-              child: const Text('Export'),
-            ),
-        ],
-      ),
     );
   }
 

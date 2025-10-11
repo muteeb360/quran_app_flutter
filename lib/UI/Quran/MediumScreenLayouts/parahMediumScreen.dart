@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hidaya_app/repository/quran_repository.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -70,7 +71,8 @@ class _ParaMediumScreenState extends State<ParaMediumScreen> {
 
         int preloadStart = 1;
         int preloadEnd = verseCount;
-        if (widget.lastReadSurah == surahNumber && widget.lastReadAyah != null) {
+        if (widget.lastReadSurah == surahNumber &&
+            widget.lastReadAyah != null) {
           final lastReadAyah = widget.lastReadAyah!.clamp(1, verseCount);
           preloadStart = (lastReadAyah - 5).clamp(1, verseCount);
           preloadEnd = (lastReadAyah + 5).clamp(1, verseCount);
@@ -85,10 +87,7 @@ class _ParaMediumScreenState extends State<ParaMediumScreen> {
           orderBy: 'id ASC',
         );
 
-        allAyahs.add({
-          'surah_info': surah,
-          'ayahs': result,
-        });
+        allAyahs.add({'surah_info': surah, 'ayahs': result});
 
         cumulativeIndex += 1 + result.length;
 
@@ -103,11 +102,10 @@ class _ParaMediumScreenState extends State<ParaMediumScreen> {
       if (foundLastRead && widget.lastReadAyah != null) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (_scrollController.isAttached) {
-            _scrollController.jumpTo(
-              index: lastReadIndex,
-              alignment: 0.5,
+            _scrollController.jumpTo(index: lastReadIndex, alignment: 0.5);
+            print(
+              "Scrolled to Surah ${widget.lastReadSurah}, Ayah ${widget.lastReadAyah} (index $lastReadIndex)",
             );
-            print("Scrolled to Surah ${widget.lastReadSurah}, Ayah ${widget.lastReadAyah} (index $lastReadIndex)");
             Future.delayed(Duration(milliseconds: 200), () {
               if (_scrollController.isAttached) {
                 _scrollController.scrollTo(
@@ -122,7 +120,9 @@ class _ParaMediumScreenState extends State<ParaMediumScreen> {
         });
       }
 
-      print("Fetched ${groupedAyahs.length} Surahs for Parah ${widget.parahNumber}");
+      print(
+        "Fetched ${groupedAyahs.length} Surahs for Parah ${widget.parahNumber}",
+      );
     } catch (e) {
       setState(() {
         errorMessage = "Failed to fetch ayahs: $e";
@@ -132,40 +132,21 @@ class _ParaMediumScreenState extends State<ParaMediumScreen> {
     }
   }
 
-  Future<void> _saveLastRead(int surahNumber, int ayahIndex, String surahName, String arabicName) async {
-    try {
-      final db = await DatabaseHelper.database;
-      await db.delete('last_read');
-      await db.insert(
-        'last_read',
-        {
-          'surah_number': surahNumber,
-          'ayah_number': ayahIndex + 1,
-          'surah_name': surahName,
-          'arabic_name': arabicName,
-          'timestamp': DateTime.now().millisecondsSinceEpoch,
-          'source': 'parah',
-          'parah_number': widget.parahNumber,
-        },
-        conflictAlgorithm: ConflictAlgorithm.replace,
-      );
-      print("Saved last read: Surah $surahNumber, Ayah ${ayahIndex + 1}, Source: parah");
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Last read updated: $surahName, Ayah ${ayahIndex + 1}'),
-          duration: const Duration(seconds: 2),
-        ),
-      );
-    } catch (e) {
-      print("Failed to save last read: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Failed to update last read'),
-          duration: Duration(seconds: 2),
-        ),
-      );
-    }
+  void _saveLastRead(
+      int surahNumber,
+      int ayahIndex,
+      String surahName,
+      String arabicName,
+      ) async {
+    await QuranRepository.updateLastRead(
+      surahNumber: surahNumber,
+      ayahIndex: ayahIndex,
+      surahName: surahName,
+      arabicName: arabicName,
+      source: 'parah',
+      parahNumber: widget.parahNumber,
+      context: context,
+    );
   }
 
   void _toggleTranslation() {
@@ -181,7 +162,8 @@ class _ParaMediumScreenState extends State<ParaMediumScreen> {
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder:
+          (context) => AlertDialog(
         title: const Text(
           'Adjust Font Sizes',
           style: TextStyle(
@@ -199,10 +181,7 @@ class _ParaMediumScreenState extends State<ParaMediumScreen> {
                 children: [
                   const Text(
                     'Arabic Text Size:',
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 14,
-                    ),
+                    style: TextStyle(fontFamily: 'Poppins', fontSize: 14),
                   ),
                   Slider(
                     value: tempArabicFontSize,
@@ -218,10 +197,7 @@ class _ParaMediumScreenState extends State<ParaMediumScreen> {
                   ),
                   const Text(
                     'Translation Text Size:',
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 14,
-                    ),
+                    style: TextStyle(fontFamily: 'Poppins', fontSize: 14),
                   ),
                   Slider(
                     value: tempTranslationFontSize,
@@ -237,10 +213,7 @@ class _ParaMediumScreenState extends State<ParaMediumScreen> {
                   ),
                   const Text(
                     'Ayah End Sign Size:',
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 14,
-                    ),
+                    style: TextStyle(fontFamily: 'Poppins', fontSize: 14),
                   ),
                   Slider(
                     value: tempAyahEndSignFontSize,
@@ -267,7 +240,8 @@ class _ParaMediumScreenState extends State<ParaMediumScreen> {
                   AyahCard(
                     index: 1,
                     arabicText: 'الْحَمْدُ لِلَّهِ رَبِّ الْعَالَمِينَ',
-                    translationText: 'تمام تعریفیں اللہ کے لیے ہیں جو تمام جہانوں کا رب ہے',
+                    translationText:
+                    'تمام تعریفیں اللہ کے لیے ہیں جو تمام جہانوں کا رب ہے',
                     showTranslation: showTranslation,
                     isLastRead: false,
                     arabicFontSize: tempArabicFontSize,
@@ -285,18 +259,21 @@ class _ParaMediumScreenState extends State<ParaMediumScreen> {
             onPressed: () => Navigator.pop(context),
             child: const Text(
               'Cancel',
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: 14,
-              ),
+              style: TextStyle(fontFamily: 'Poppins', fontSize: 14),
             ),
           ),
           TextButton(
             onPressed: () async {
               final prefs = await SharedPreferences.getInstance();
               await prefs.setDouble('arabicFontSize', tempArabicFontSize);
-              await prefs.setDouble('translationFontSize', tempTranslationFontSize);
-              await prefs.setDouble('ayahEndSignFontSize', tempAyahEndSignFontSize);
+              await prefs.setDouble(
+                'translationFontSize',
+                tempTranslationFontSize,
+              );
+              await prefs.setDouble(
+                'ayahEndSignFontSize',
+                tempAyahEndSignFontSize,
+              );
               setState(() {
                 arabicFontSize = tempArabicFontSize;
                 translationFontSize = tempTranslationFontSize;
@@ -306,10 +283,7 @@ class _ParaMediumScreenState extends State<ParaMediumScreen> {
             },
             child: const Text(
               'Apply',
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: 14,
-              ),
+              style: TextStyle(fontFamily: 'Poppins', fontSize: 14),
             ),
           ),
         ],
@@ -357,10 +331,7 @@ class _ParaMediumScreenState extends State<ParaMediumScreen> {
         flexibleSpace: Container(
           decoration: const BoxDecoration(
             gradient: LinearGradient(
-              colors: [
-                Color(0xFF44C17B),
-                Color(0xFF205B3A),
-              ],
+              colors: [Color(0xFF44C17B), Color(0xFF205B3A)],
               begin: Alignment.centerLeft,
               end: Alignment.centerRight,
             ),
@@ -382,7 +353,9 @@ class _ParaMediumScreenState extends State<ParaMediumScreen> {
                 PopupMenuItem<String>(
                   value: 'toggle_translation',
                   child: Text(
-                    showTranslation ? 'Turn Translation Off' : 'Turn Translation On',
+                    showTranslation
+                        ? 'Turn Translation Off'
+                        : 'Turn Translation On',
                     style: const TextStyle(
                       fontFamily: 'Poppins',
                       fontSize: 16,
@@ -407,20 +380,24 @@ class _ParaMediumScreenState extends State<ParaMediumScreen> {
         ],
       ),
       backgroundColor: AppColors.background,
-      body: isLoading
+      body:
+      isLoading
           ? const Center(child: CircularProgressIndicator())
           : errorMessage != null
           ? Center(child: Text(errorMessage!))
           : ScrollablePositionedList.builder(
         itemScrollController: _scrollController,
         padding: EdgeInsets.symmetric(
-            vertical: screenHeight * 0.02, horizontal: screenWidth * 0.05),
+          vertical: screenHeight * 0.02,
+          horizontal: screenWidth * 0.05,
+        ),
         itemCount: totalItems,
         itemBuilder: (context, index) {
           int currentIndex = 0;
           for (var surahData in groupedAyahs) {
             final surahInfo = surahData['surah_info'];
-            final ayahs = surahData['ayahs'] as List<Map<String, dynamic>>;
+            final ayahs =
+            surahData['ayahs'] as List<Map<String, dynamic>>;
             final surahNumber = surahInfo['surah_number'] as int? ?? 1;
 
             if (index == currentIndex) {
@@ -437,17 +414,26 @@ class _ParaMediumScreenState extends State<ParaMediumScreen> {
             }
             currentIndex++;
 
-            for (int ayahIndex = 0; ayahIndex < ayahs.length; ayahIndex++) {
+            for (
+            int ayahIndex = 0;
+            ayahIndex < ayahs.length;
+            ayahIndex++
+            ) {
               if (index == currentIndex) {
                 final ayah = ayahs[ayahIndex];
                 print(
-                    "Rendering index $index: Surah $surahNumber, Ayah ${ayahIndex + 1}");
+                  "Rendering index $index: Surah $surahNumber, Ayah ${ayahIndex + 1}",
+                );
                 return AyahCard(
                   index: ayahIndex + 1,
-                  arabicText: ayah['arabic_text'] ?? 'No text available',
-                  translationText: ayah['translation_text'] ?? 'No translation available',
+                  arabicText:
+                  ayah['arabic_text'] ?? 'No text available',
+                  translationText:
+                  ayah['translation_text'] ??
+                      'No translation available',
                   showTranslation: showTranslation,
-                  isLastRead: widget.lastReadSurah == surahNumber &&
+                  isLastRead:
+                  widget.lastReadSurah == surahNumber &&
                       widget.lastReadAyah == (ayahIndex + 1),
                   arabicFontSize: arabicFontSize,
                   translationFontSize: translationFontSize,
@@ -455,10 +441,12 @@ class _ParaMediumScreenState extends State<ParaMediumScreen> {
                   onLongPress: () {
                     showDialog(
                       context: context,
-                      builder: (context) => AlertDialog(
+                      builder:
+                          (context) => AlertDialog(
                         title: Text('Ayah ${ayahIndex + 1}'),
-                        content:
-                        const Text('Do you want to set this ayah as your last read?'),
+                        content: const Text(
+                          'Do you want to set this ayah as your last read?',
+                        ),
                         actions: [
                           TextButton(
                             onPressed: () {
@@ -471,8 +459,10 @@ class _ParaMediumScreenState extends State<ParaMediumScreen> {
                               _saveLastRead(
                                 surahNumber,
                                 ayahIndex,
-                                surahInfo['surah_name'] ?? 'Unknown Surah',
-                                surahInfo['arabic_name'] ?? 'Unknown Arabic',
+                                surahInfo['surah_name'] ??
+                                    'Unknown Surah',
+                                surahInfo['arabic_name'] ??
+                                    'Unknown Arabic',
                               );
                               Navigator.pop(context);
                             },
@@ -520,10 +510,7 @@ class SurahInfoCard extends StatelessWidget {
         gradient: const LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [
-            Color(0xFF44C17B),
-            Color(0xFF205B3A),
-          ],
+          colors: [Color(0xFF44C17B), Color(0xFF205B3A)],
         ),
       ),
       child: Padding(
@@ -628,9 +615,7 @@ class AyahCard extends StatelessWidget {
       onLongPress: onLongPress,
       child: Card(
         margin: const EdgeInsets.symmetric(vertical: 8.0),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         elevation: 4,
         child: Container(
           decoration: BoxDecoration(

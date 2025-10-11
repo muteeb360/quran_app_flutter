@@ -1,79 +1,63 @@
-import 'package:sqflite/sqflite.dart';
-import 'package:path/path.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:flutter/services.dart' show rootBundle, ByteData;
-import 'dart:io' as io;
 import 'dart:async';
+import 'dart:io' as io;
 import 'dart:math';
 
-class DatabaseHelper {
-  static Database? _database;
-  static const int _maxRetryAttempts = 3;
-  static const int _retryDelayMs = 1000;
-  static const int _version = 4; // Increment the version for migration (was 3)
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart' show rootBundle, ByteData;
+import 'package:path/path.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:sqflite/sqflite.dart';
 
+class DatabaseHelper {
   DatabaseHelper._();
 
+  static Database? _database;
+  static Completer<Database>? _initCompleter;
+
+  static const int _maxRetryAttempts = 3;
+  static const int _initialRetryDelayMs = 500;
+  static const int _version = 4; // Keep your version
+
+  /// Get database (singleton). Prevents concurrent inits.
   static Future<Database> get database async {
-    if (_database == null || !_database!.isOpen) {
-      try {
-        _database = await _initDatabaseWithRetry();
-      } catch (e) {
-        print('Failed to initialize database after retries: $e');
-        rethrow;
-      }
+    if (_database != null && _database!.isOpen) return _database!;
+    if (_initCompleter != null) return _initCompleter!.future;
+
+    _initCompleter = Completer();
+    try {
+      _database = await _initDatabaseWithRetry();
+      _initCompleter!.complete(_database);
+    } catch (e, st) {
+      if (!_initCompleter!.isCompleted) _initCompleter!.completeError(e, st);
+      rethrow;
+    } finally {
+      // allow future re-init if needed by clearing completer only on success/failure handled above
+      _initCompleter = null;
     }
     return _database!;
   }
 
-  static Future<List<Map<String, dynamic>>> getSupplicationCategories() async {
-    final db = await database;
-    final result = await db.rawQuery('''
-      SELECT category, COUNT(*) as total_supplications 
-      FROM supplications 
-      GROUP BY category
-    ''');
-    return result;
-  }
-
-  static Future<List<Map<String, dynamic>>> getSupplicationSubCategories(String category) async {
-    final db = await database;
-    final result = await db.rawQuery('''
-      SELECT subcategory, COUNT(*) as total_supplications 
-      FROM supplications 
-      WHERE category = ?
-      GROUP BY subcategory
-    ''', [category]);
-    return result;
-  }
-
-  static Future<List<Map<String, dynamic>>> getSupplicationsBySubCategory(String subcategory) async {
-    final db = await database;
-    final result = await db.query(
-      'supplications',
-      columns: ['arabic', 'urdu', 'english', 'source'],
-      where: 'subcategory = ?',
-      whereArgs: [subcategory],
-    );
-    return result;
-  }
-
+  /// Initialize database with retry and exponential backoff.
   static Future<Database> _initDatabaseWithRetry({int attempt = 1}) async {
     try {
-      io.Directory documentsDirectory = await getApplicationDocumentsDirectory();
-      String path = join(documentsDirectory.path, "quran.db");
+      final documentsDirectory = await getApplicationDocumentsDirectory();
+      final dbPath = join(documentsDirectory.path, "quran.db");
 
-      if (!await io.File(path).exists()) {
-        print("Copying quran.db from assets to $path");
-        ByteData data = await rootBundle.load('assets/database/quran.db');
-        List<int> bytes = data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
-        await io.File(path).writeAsBytes(bytes, flush: true);
+      if (!await io.File(dbPath).exists()) {
+        // copy bundled asset on first run
+        final ByteData data = await rootBundle.load('assets/database/quran.db');
+        final bytes = data.buffer.asUint8List(
+          data.offsetInBytes,
+          data.lengthInBytes,
+        );
+        await io.File(dbPath).writeAsBytes(bytes, flush: true);
       }
 
       return await openDatabase(
-        path,
+        dbPath,
         version: _version,
         onCreate: (db, version) async {
+          // create lightweight tables you need
           await db.execute('''
             CREATE TABLE IF NOT EXISTS ayahs_table (
               id INTEGER PRIMARY KEY,
@@ -118,6 +102,18 @@ class DatabaseHelper {
               parah_number INTEGER
             )
           ''');
+
+          // indexes for faster filtering/grouping
+          await db.execute(
+            'CREATE INDEX IF NOT EXISTS idx_prayer_times_date_method ON prayer_times(date, juristic_method)',
+          );
+          // supplications table indexes (if you have this table in bundled DB)
+          await db.execute(
+            'CREATE INDEX IF NOT EXISTS idx_supplications_category ON supplications(category)',
+          );
+          await db.execute(
+            'CREATE INDEX IF NOT EXISTS idx_supplications_subcategory ON supplications(subcategory)',
+          );
         },
         onUpgrade: (db, oldVersion, newVersion) async {
           if (oldVersion < 2) {
@@ -131,28 +127,109 @@ class DatabaseHelper {
                 timestamp INTEGER
               )
             ''');
-            print('Database upgraded from version $oldVersion to $newVersion: Added last_read table');
           }
           if (oldVersion < 3) {
-            await db.execute('ALTER TABLE last_read ADD COLUMN source TEXT');
-            print('Database upgraded from version $oldVersion to $newVersion: Added source column to last_read table');
+            // safe add column: using try/catch because some sqlite versions will throw if column exists
+            try {
+              await db.execute('ALTER TABLE last_read ADD COLUMN source TEXT');
+            } catch (_) {}
           }
           if (oldVersion < 4) {
-            await db.execute('ALTER TABLE last_read ADD COLUMN parah_number INTEGER');
-            print('Database upgraded from version $oldVersion to $newVersion: Added parah_number column to last_read table');
+            try {
+              await db.execute(
+                'ALTER TABLE last_read ADD COLUMN parah_number INTEGER',
+              );
+            } catch (_) {}
           }
+
+          // ensure indexes exist after upgrade
+          try {
+            await db.execute(
+              'CREATE INDEX IF NOT EXISTS idx_prayer_times_date_method ON prayer_times(date, juristic_method)',
+            );
+            await db.execute(
+              'CREATE INDEX IF NOT EXISTS idx_supplications_category ON supplications(category)',
+            );
+            await db.execute(
+              'CREATE INDEX IF NOT EXISTS idx_supplications_subcategory ON supplications(subcategory)',
+            );
+          } catch (_) {}
         },
       );
     } catch (e) {
       if (attempt < _maxRetryAttempts) {
-        print('Database initialization failed (Attempt $attempt/$_maxRetryAttempts): $e. Retrying in $_retryDelayMs ms...');
-        await Future.delayed(Duration(milliseconds: _retryDelayMs));
+        final delay = _initialRetryDelayMs * pow(2, attempt - 1).toInt();
+        await Future.delayed(Duration(milliseconds: delay));
         return _initDatabaseWithRetry(attempt: attempt + 1);
       }
-      throw Exception('Database initialization failed after $_maxRetryAttempts attempts: $e');
+      rethrow;
     }
   }
 
+  /// Safe close
+  static Future<void> close() async {
+    try {
+      if (_database != null && _database!.isOpen) {
+        await _database!.close();
+        _database = null;
+      }
+    } catch (e) {
+      // swallow or log
+      print('Error closing DB: $e');
+    }
+  }
+
+  /// Reopen helper (if needed)
+  static Future<void> reopen() async {
+    if (_database == null || !_database!.isOpen) {
+      _database = await _initDatabaseWithRetry();
+    }
+  }
+
+  /// Example optimized random ayah (single query)
+  static Future<Map<String, dynamic>> getRandomAyah() async {
+    final db = await database;
+    final rows = await db.rawQuery(
+      'SELECT * FROM ayahs_table ORDER BY RANDOM() LIMIT 1',
+    );
+    if (rows.isNotEmpty) return rows.first;
+    throw Exception('No ayahs found');
+  }
+
+  /// Use this to do heavy processing in an isolate AFTER fetching results.
+  /// Fetch in main isolate (sqflite safe), then call compute for CPU-heavy tasks.
+  static Future<List<Map<String, dynamic>>> queryAndProcess(
+      String table, {
+        String? where,
+        List<Object?>? whereArgs,
+        bool processInIsolate = false,
+      }) async {
+    final db = await database;
+    final rows = await db.query(table, where: where, whereArgs: whereArgs);
+    if (!processInIsolate) return rows;
+    // DO NOT perform DB queries inside an isolate. Only pass raw data for processing.
+    final processed = await compute(_heavyProcessRows, rows);
+    return processed;
+  }
+
+  /// Example heavy processing function to run in compute()
+  static List<Map<String, dynamic>> _heavyProcessRows(
+      List<Map<String, dynamic>> rows,
+      ) {
+    // do CPU-heavy transformations here
+    return rows.map((r) {
+      final copy = Map<String, dynamic>.from(r);
+      // example: add derived field
+      if (copy.containsKey('english')) {
+        final v = copy['english'];
+        if (v is String && v.isNotEmpty)
+          copy['english_upper'] = v.toUpperCase();
+      }
+      return copy;
+    }).toList();
+  }
+
+  /* Prayer times helpers (unchanged but safe) */
   static Future<void> insertPrayerTimes({
     required String date,
     required String location,
@@ -160,7 +237,12 @@ class DatabaseHelper {
     required Map<String, String> prayerTimes,
   }) async {
     final db = await database;
-    await db.delete('prayer_times', where: 'date = ? AND juristic_method = ?', whereArgs: [date, juristicMethod]);
+    // keep only one row per date + method
+    await db.delete(
+      'prayer_times',
+      where: 'date = ? AND juristic_method = ?',
+      whereArgs: [date, juristicMethod],
+    );
     await db.insert('prayer_times', {
       'date': date,
       'location': location,
@@ -174,16 +256,17 @@ class DatabaseHelper {
     });
   }
 
-  static Future<Map<String, dynamic>?> getPrayerTimes(String date, String juristicMethod) async {
+  static Future<Map<String, dynamic>?> getPrayerTimes(
+      String date,
+      String juristicMethod,
+      ) async {
     final db = await database;
     final result = await db.query(
       'prayer_times',
       where: 'date = ? AND juristic_method = ?',
       whereArgs: [date, juristicMethod],
     );
-    if (result.isNotEmpty) {
-      return result.first;
-    }
+    if (result.isNotEmpty) return result.first;
     return null;
   }
 
@@ -192,45 +275,43 @@ class DatabaseHelper {
     await db.delete('prayer_times');
   }
 
-  static Future<void> close() async {
-    if (_database != null && _database!.isOpen) {
-      try {
-        await _database!.close();
-        _database = null;
-        print('Database closed successfully');
-      } catch (e) {
-        print('Failed to close database: $e');
-      }
-    }
-  }
-
-  static Future<void> reopen() async {
-    if (_database == null || !_database!.isOpen) {
-      _database = await _initDatabaseWithRetry();
-      print('Database reopened successfully');
-    }
-  }
-
-  // New method to get a random ayah
-  static Future<Map<String, dynamic>> getRandomAyah() async {
+  /* Supplication queries (same sql but ensure indexes exist) */
+  static Future<List<Map<String, dynamic>>> getSupplicationCategories() async {
     final db = await database;
-    final result = await db.rawQuery('SELECT COUNT(*) as count FROM ayahs_table');
-    final int count = Sqflite.firstIntValue(result) ?? 0;
-    if (count == 0) {
-      throw Exception('No ayahs found in the database');
-    }
-    final random = Random();
-    final int randomId = random.nextInt(count) + 1; // +1 because id starts from 1
-    final List<Map<String, dynamic>> ayah = await db.query(
-      'ayahs_table',
-      where: 'id = ?',
-      whereArgs: [randomId],
+    final result = await db.rawQuery('''
+      SELECT category, COUNT(*) as total_supplications 
+      FROM supplications 
+      GROUP BY category
+    ''');
+    return result;
+  }
+
+  static Future<List<Map<String, dynamic>>> getSupplicationSubCategories(
+      String category,
+      ) async {
+    final db = await database;
+    final result = await db.rawQuery(
+      '''
+      SELECT subcategory, COUNT(*) as total_supplications 
+      FROM supplications 
+      WHERE category = ?
+      GROUP BY subcategory
+    ''',
+      [category],
     );
-    if (ayah.isNotEmpty) {
-      return ayah.first;
-    } else {
-      // Fallback to id 1 if the random query fails
-      return (await db.query('ayahs_table', where: 'id = ?', whereArgs: [1])).first;
-    }
+    return result;
+  }
+
+  static Future<List<Map<String, dynamic>>> getSupplicationsBySubCategory(
+      String subcategory,
+      ) async {
+    final db = await database;
+    final result = await db.query(
+      'supplications',
+      columns: ['arabic', 'urdu', 'english', 'source'],
+      where: 'subcategory = ?',
+      whereArgs: [subcategory],
+    );
+    return result;
   }
 }
