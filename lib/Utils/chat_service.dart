@@ -35,7 +35,6 @@ class ConversationMessage {
 
 class ChatService {
   final String? apiUrl = dotenv.env['BASE_URL'];
-  final String? apiKey = dotenv.env['API_KEY'];
 
   // Conversation management
   final List<ConversationMessage> _conversationHistory = [];
@@ -106,7 +105,7 @@ Your mission is to guide with compassion, clarity, and authenticity — strictly
   }
 
   // Create conversation summary when history gets too long
-  Future<void> _summarizeConversation() async {
+  Future<void> _summarizeConversation(String apikey) async {
     if (_conversationHistory.length < maxMessagesBeforeSummary) return;
 
     try {
@@ -140,7 +139,7 @@ Provide a comprehensive but concise summary in 2-3 paragraphs that will help mai
       final response = await http.post(
         Uri.parse(apiUrl!),
         headers: {
-          "Authorization": "Bearer $apiKey",
+          "Authorization": "Bearer $apikey",
           "Content-Type": "application/json",
         },
         body: jsonEncode({
@@ -175,7 +174,8 @@ Provide a comprehensive but concise summary in 2-3 paragraphs that will help mai
   }
 
   // Send message with full conversation context
-  Future<String> sendMessage(String userMessage) async {
+  Future<String> sendMessage(String userMessage,Future<String?> apikey) async {
+    String? finalapikey = await apikey;
     try {
       // Load conversation if not already loaded
       if (_conversationHistory.isEmpty) {
@@ -215,7 +215,7 @@ Provide a comprehensive but concise summary in 2-3 paragraphs that will help mai
       final response = await http.post(
         Uri.parse(apiUrl!),
         headers: {
-          "Authorization": "Bearer $apiKey",
+          "Authorization": "Bearer $finalapikey",
           "Content-Type": "application/json",
         },
         body: jsonEncode({
@@ -240,7 +240,7 @@ Provide a comprehensive but concise summary in 2-3 paragraphs that will help mai
         await _saveConversationHistory();
 
         // Check if we need to summarize
-        await _summarizeConversation();
+        await _summarizeConversation(finalapikey!);
 
         return assistantResponse;
       } else {

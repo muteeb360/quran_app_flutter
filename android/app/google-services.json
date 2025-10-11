@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "81891379027",
+    "project_id": "hidayaaiapp",
+    "storage_bucket": "hidayaaiapp.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:81891379027:android:ecf6f8a0e5bd274edf03a6",
+        "android_client_info": {
+          "package_name": "com.pixelport.hidaya_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA2lPvbeBHgel0r51fIy3dAdAktyqycXPc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

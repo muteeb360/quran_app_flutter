@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:convert';
@@ -5,7 +6,6 @@ import 'dart:math' as math;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:url_launcher/url_launcher.dart';
-
 import '../../../Utils/chat_service.dart';
 
 // Message model to store chat history
@@ -44,6 +44,7 @@ class ChatbotMediumScreen extends StatefulWidget {
 
 class _ChatbotMediumScreenState extends State<ChatbotMediumScreen>
     with TickerProviderStateMixin {
+  static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final List<ChatMessage> _messages = [];
@@ -92,6 +93,24 @@ class _ChatbotMediumScreenState extends State<ChatbotMediumScreen>
         );
       });
       _scrollToBottom();
+    }
+  }
+
+
+  //fetch api key from firestore database
+  static Future<String?> fetchApiKey() async {
+    try {
+      final doc = await _firestore.collection('apikey').doc('apikey').get();
+      if (doc.exists) {
+        final data = doc.data();
+        return data?['apikey'] as String?;
+      } else {
+        print('⚠️ No API key document found.');
+        return null;
+      }
+    } catch (e) {
+      print('❌ Error fetching API key: $e');
+      return null;
     }
   }
 
@@ -146,7 +165,7 @@ class _ChatbotMediumScreenState extends State<ChatbotMediumScreen>
     _slideController.forward();
 
     try {
-      final response = await widget.chatService.sendMessage(text);
+      final response = await widget.chatService.sendMessage(text,fetchApiKey());
       final botMessage = ChatMessage(
         text: response,
         isUser: false,
