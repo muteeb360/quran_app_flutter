@@ -43,6 +43,7 @@ class _ParaMediumScreenState extends State<ParaMediumScreen> {
 
   Future<void> _loadFontSizes() async {
     final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
     setState(() {
       arabicFontSize = prefs.getDouble('arabicFontSize') ?? 22.0;
       translationFontSize = prefs.getDouble('translationFontSize') ?? 14.0;
@@ -93,7 +94,7 @@ class _ParaMediumScreenState extends State<ParaMediumScreen> {
 
         print("Fetched Ayahs $startAyah to $endAyah for Surah $surahNumber");
       }
-
+      if (!mounted) return;
       setState(() {
         groupedAyahs = allAyahs;
         isLoading = false;
@@ -124,6 +125,7 @@ class _ParaMediumScreenState extends State<ParaMediumScreen> {
         "Fetched ${groupedAyahs.length} Surahs for Parah ${widget.parahNumber}",
       );
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         errorMessage = "Failed to fetch ayahs: $e";
         isLoading = false;
@@ -150,6 +152,7 @@ class _ParaMediumScreenState extends State<ParaMediumScreen> {
   }
 
   void _toggleTranslation() {
+    if (!mounted) return;
     setState(() {
       showTranslation = !showTranslation;
     });
@@ -274,6 +277,7 @@ class _ParaMediumScreenState extends State<ParaMediumScreen> {
                 'ayahEndSignFontSize',
                 tempAyahEndSignFontSize,
               );
+              if (!mounted) return;
               setState(() {
                 arabicFontSize = tempArabicFontSize;
                 translationFontSize = tempTranslationFontSize;

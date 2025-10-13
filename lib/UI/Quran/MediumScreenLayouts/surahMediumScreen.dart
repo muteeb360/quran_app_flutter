@@ -72,6 +72,7 @@ class _SurahMediumScreenState extends State<SurahMediumScreen> {
       );
 
       if (result.isNotEmpty) {
+        if (!mounted) return;
         setState(() {
           for (int i = startAyah - 1; i < endAyah; i++) {
             if (i - (startAyah - 1) < result.length) {
@@ -112,6 +113,7 @@ class _SurahMediumScreenState extends State<SurahMediumScreen> {
       // Fetch remaining Ayahs asynchronously
       _fetchRemainingAyahs();
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         errorMessage = "Failed to fetch ayahs: $e";
         isLoading = false;
@@ -136,7 +138,7 @@ class _SurahMediumScreenState extends State<SurahMediumScreen> {
           whereArgs: [surahStart + currentAyah - 1, surahStart + endAyah - 1],
           orderBy: 'id ASC',
         );
-
+        if (!mounted) return;
         setState(() {
           for (int i = currentAyah - 1; i < endAyah; i++) {
             if (i - (currentAyah - 1) < result.length) {
@@ -160,7 +162,7 @@ class _SurahMediumScreenState extends State<SurahMediumScreen> {
           whereArgs: [surahStart + startAyah - 1, surahStart + currentAyah - 1],
           orderBy: 'id ASC',
         );
-
+        if (!mounted) return;
         setState(() {
           for (int i = startAyah - 1; i < currentAyah; i++) {
             if (i - (startAyah - 1) < result.length) {
@@ -194,6 +196,7 @@ class _SurahMediumScreenState extends State<SurahMediumScreen> {
   }
 
   void _toggleTranslation() {
+    if (!mounted) return;
     setState(() {
       showTranslation = !showTranslation;
     });
@@ -286,6 +289,7 @@ class _SurahMediumScreenState extends State<SurahMediumScreen> {
           ),
           TextButton(
             onPressed: () {
+              if (!mounted) return;
               setState(() {
                 arabicFontSize = tempArabicFontSize;
                 translationFontSize = tempTranslationFontSize;

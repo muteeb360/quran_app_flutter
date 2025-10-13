@@ -20,6 +20,45 @@ class _MediumPrayerTimesScreenState extends State<MediumPrayerTimesScreen> {
   String? _location;
   bool _isLoadingLocation = false;
   Map<String, double>? _coordinates;
+
+  // Separate storage for Hanafi and Shafi prayer times
+  Map<String, Map<String, String>> _cachedPrayerTimes = {
+    'Hanafi': {
+      'Fajr': 'Loading...',
+      'Sunrise': 'Loading...',
+      'Dhuhr': 'Loading...',
+      'Asr': 'Loading...',
+      'Maghrib': 'Loading...',
+      'Isha': 'Loading...',
+    },
+    'Shafi': {
+      'Fajr': 'Loading...',
+      'Sunrise': 'Loading...',
+      'Dhuhr': 'Loading...',
+      'Asr': 'Loading...',
+      'Maghrib': 'Loading...',
+      'Isha': 'Loading...',
+    },
+  };
+
+  Map<String, Map<String, String>> _cachedPrayerEndTimes = {
+    'Hanafi': {
+      'Fajr': 'Loading...',
+      'Dhuhr': 'Loading...',
+      'Asr': 'Loading...',
+      'Maghrib': 'Loading...',
+      'Isha': 'Loading...',
+    },
+    'Shafi': {
+      'Fajr': 'Loading...',
+      'Dhuhr': 'Loading...',
+      'Asr': 'Loading...',
+      'Maghrib': 'Loading...',
+      'Isha': 'Loading...',
+    },
+  };
+
+  // Current displayed prayer times
   Map<String, String> _prayerTimes = {
     'Fajr': 'Loading...',
     'Sunrise': 'Loading...',
@@ -28,6 +67,7 @@ class _MediumPrayerTimesScreenState extends State<MediumPrayerTimesScreen> {
     'Maghrib': 'Loading...',
     'Isha': 'Loading...',
   };
+
   Map<String, String> _prayerEndTimes = {
     'Fajr': 'Loading...',
     'Dhuhr': 'Loading...',
@@ -35,6 +75,7 @@ class _MediumPrayerTimesScreenState extends State<MediumPrayerTimesScreen> {
     'Maghrib': 'Loading...',
     'Isha': 'Loading...',
   };
+
   String _upcomingPrayer = 'Dhuhr';
   String _upcomingPrayerTime = '12:38 pm';
   bool _isLoadingPrayerTimes = true;
@@ -52,6 +93,7 @@ class _MediumPrayerTimesScreenState extends State<MediumPrayerTimesScreen> {
 
   Future<void> _loadJuristicMethod() async {
     final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
     setState(() {
       _selectedJuristicMethod = prefs.getString('juristic_method') ?? 'Shafi';
     });
@@ -60,10 +102,14 @@ class _MediumPrayerTimesScreenState extends State<MediumPrayerTimesScreen> {
   Future<void> _saveJuristicMethod(String method) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('juristic_method', method);
+    if (!mounted) return;
     setState(() {
       _selectedJuristicMethod = method;
+      // Load cached prayer times for the selected method
+      _prayerTimes = Map.from(_cachedPrayerTimes[method]!);
+      _prayerEndTimes = Map.from(_cachedPrayerEndTimes[method]!);
     });
-    _checkAndLoadPrayerTimes(); // Recalculate prayer times with new method
+    _updateUpcomingPrayer();
   }
 
   Future<void> _checkAndLoadPrayerTimes() async {
@@ -78,6 +124,7 @@ class _MediumPrayerTimesScreenState extends State<MediumPrayerTimesScreen> {
   }
 
   Future<void> _loadPrayerTimes() async {
+    if (!mounted) return;
     setState(() {
       _isLoadingLocation = true;
       _errorMessage = null;
@@ -92,7 +139,8 @@ class _MediumPrayerTimesScreenState extends State<MediumPrayerTimesScreen> {
       // Get the location name for display and cache it
       await _updateLocationName(latitude, longitude);
 
-      _calculatePrayerTimes(latitude, longitude, DateTime.now());
+      // Calculate prayer times for BOTH methods
+      await _calculateBothPrayerTimes(latitude, longitude, DateTime.now());
     } catch (e) {
       // If location fetching fails, try using cached location
       try {
@@ -105,6 +153,7 @@ class _MediumPrayerTimesScreenState extends State<MediumPrayerTimesScreen> {
           final prefs = await SharedPreferences.getInstance();
           String? cachedLocationName = prefs.getString('location_name');
           if (cachedLocationName != null) {
+            if (!mounted) return;
             setState(() {
               _location = cachedLocationName;
               _isLoadingLocation = false;
@@ -114,8 +163,10 @@ class _MediumPrayerTimesScreenState extends State<MediumPrayerTimesScreen> {
             await _updateLocationName(latitude, longitude);
           }
 
-          _calculatePrayerTimes(latitude, longitude, DateTime.now());
+          // Calculate prayer times for BOTH methods
+          await _calculateBothPrayerTimes(latitude, longitude, DateTime.now());
         } else {
+          if (!mounted) return;
           setState(() {
             _errorMessage = e.toString();
             _isLoadingLocation = false;
@@ -123,6 +174,7 @@ class _MediumPrayerTimesScreenState extends State<MediumPrayerTimesScreen> {
           });
         }
       } catch (cachedError) {
+        if (!mounted) return;
         setState(() {
           _errorMessage = e.toString();
           _isLoadingLocation = false;
@@ -139,6 +191,7 @@ class _MediumPrayerTimesScreenState extends State<MediumPrayerTimesScreen> {
       if (placemarks.isNotEmpty) {
         Placemark placemark = placemarks.first;
         String locationName = "${placemark.locality ?? 'Unknown City'}, ${placemark.country ?? 'Unknown Country'}";
+        if (!mounted) return;
         setState(() {
           _location = locationName;
           _isLoadingLocation = false;
@@ -146,6 +199,7 @@ class _MediumPrayerTimesScreenState extends State<MediumPrayerTimesScreen> {
         // Cache the location name
         await prefs.setString('location_name', locationName);
       } else {
+        if (!mounted) return;
         setState(() {
           _location = "Unknown Location";
           _isLoadingLocation = false;
@@ -155,6 +209,7 @@ class _MediumPrayerTimesScreenState extends State<MediumPrayerTimesScreen> {
     } catch (e) {
       // If geocoding fails (e.g., no internet), use a fallback
       String? cachedLocationName = prefs.getString('location_name');
+      if (!mounted) return;
       setState(() {
         _location = cachedLocationName ?? "Location unavailable (cached)";
         _isLoadingLocation = false;
@@ -162,48 +217,95 @@ class _MediumPrayerTimesScreenState extends State<MediumPrayerTimesScreen> {
     }
   }
 
-  Future<void> _calculatePrayerTimes(double latitude, double longitude, DateTime date) async {
+  Future<void> _calculateBothPrayerTimes(double latitude, double longitude, DateTime date) async {
+    if (!mounted) return;
     setState(() {
       _isLoadingPrayerTimes = true;
     });
+
     try {
       final utcDate = date.toUtc();
       Coordinates coordinates = Coordinates(latitude, longitude);
-      CalculationParameters params = CalculationMethod.muslimWorldLeague();
-      params.madhab = _selectedJuristicMethod == 'Hanafi' ? Madhab.hanafi : Madhab.shafi;
-      PrayerTimes prayerTimes = PrayerTimes(
+
+      // Calculate for Shafi
+      CalculationParameters shafiParams = CalculationMethod.muslimWorldLeague();
+      shafiParams.madhab = Madhab.shafi;
+      PrayerTimes shafiPrayerTimes = PrayerTimes(
         coordinates: coordinates,
         date: utcDate,
-        calculationParameters: params,
+        calculationParameters: shafiParams,
       );
 
-      DateTime fajrLocal = prayerTimes.fajr!.toLocal();
-      DateTime sunriseLocal = prayerTimes.sunrise!.toLocal();
-      DateTime dhuhrLocal = prayerTimes.dhuhr!.toLocal();
-      DateTime asrLocal = prayerTimes.asr!.toLocal();
-      DateTime maghribLocal = prayerTimes.maghrib!.toLocal();
-      DateTime ishaLocal = prayerTimes.isha!.toLocal();
+      // Calculate for Hanafi
+      CalculationParameters hanafiParams = CalculationMethod.muslimWorldLeague();
+      hanafiParams.madhab = Madhab.hanafi;
+      PrayerTimes hanafiPrayerTimes = PrayerTimes(
+        coordinates: coordinates,
+        date: utcDate,
+        calculationParameters: hanafiParams,
+      );
 
+      // Store Shafi times
+      DateTime fajrLocal = shafiPrayerTimes.fajr!.toLocal();
+      DateTime sunriseLocal = shafiPrayerTimes.sunrise!.toLocal();
+      DateTime dhuhrLocal = shafiPrayerTimes.dhuhr!.toLocal();
+      DateTime asrLocal = shafiPrayerTimes.asr!.toLocal();
+      DateTime maghribLocal = shafiPrayerTimes.maghrib!.toLocal();
+      DateTime ishaLocal = shafiPrayerTimes.isha!.toLocal();
+
+      _cachedPrayerTimes['Shafi'] = {
+        'Fajr': _convertTo12HourFormat(fajrLocal),
+        'Sunrise': _convertTo12HourFormat(sunriseLocal),
+        'Dhuhr': _convertTo12HourFormat(dhuhrLocal),
+        'Asr': _convertTo12HourFormat(asrLocal),
+        'Maghrib': _convertTo12HourFormat(maghribLocal),
+        'Isha': _convertTo12HourFormat(ishaLocal),
+      };
+
+      _cachedPrayerEndTimes['Shafi'] = {
+        'Fajr': _cachedPrayerTimes['Shafi']!['Sunrise']!,
+        'Dhuhr': _cachedPrayerTimes['Shafi']!['Asr']!,
+        'Asr': _cachedPrayerTimes['Shafi']!['Maghrib']!,
+        'Maghrib': _cachedPrayerTimes['Shafi']!['Isha']!,
+        'Isha': "Until Fajr (next day)",
+      };
+
+      // Store Hanafi times
+      fajrLocal = hanafiPrayerTimes.fajr!.toLocal();
+      sunriseLocal = hanafiPrayerTimes.sunrise!.toLocal();
+      dhuhrLocal = hanafiPrayerTimes.dhuhr!.toLocal();
+      asrLocal = hanafiPrayerTimes.asr!.toLocal();
+      maghribLocal = hanafiPrayerTimes.maghrib!.toLocal();
+      ishaLocal = hanafiPrayerTimes.isha!.toLocal();
+
+      _cachedPrayerTimes['Hanafi'] = {
+        'Fajr': _convertTo12HourFormat(fajrLocal),
+        'Sunrise': _convertTo12HourFormat(sunriseLocal),
+        'Dhuhr': _convertTo12HourFormat(dhuhrLocal),
+        'Asr': _convertTo12HourFormat(asrLocal),
+        'Maghrib': _convertTo12HourFormat(maghribLocal),
+        'Isha': _convertTo12HourFormat(ishaLocal),
+      };
+
+      _cachedPrayerEndTimes['Hanafi'] = {
+        'Fajr': _cachedPrayerTimes['Hanafi']!['Sunrise']!,
+        'Dhuhr': _cachedPrayerTimes['Hanafi']!['Asr']!,
+        'Asr': _cachedPrayerTimes['Hanafi']!['Maghrib']!,
+        'Maghrib': _cachedPrayerTimes['Hanafi']!['Isha']!,
+        'Isha': "Until Fajr (next day)",
+      };
+      if (!mounted) return;
       setState(() {
-        _prayerTimes['Fajr'] = _convertTo12HourFormat(fajrLocal);
-        _prayerTimes['Sunrise'] = _convertTo12HourFormat(sunriseLocal);
-        _prayerTimes['Dhuhr'] = _convertTo12HourFormat(dhuhrLocal);
-        _prayerTimes['Asr'] = _convertTo12HourFormat(asrLocal);
-        _prayerTimes['Maghrib'] = _convertTo12HourFormat(maghribLocal);
-        _prayerTimes['Isha'] = _convertTo12HourFormat(ishaLocal);
-
-        _prayerEndTimes['Fajr'] = _prayerTimes['Sunrise']!;
-        _prayerEndTimes['Dhuhr'] = _prayerTimes['Asr']!;
-        _prayerEndTimes['Asr'] = _prayerTimes['Maghrib']!;
-        _prayerEndTimes['Maghrib'] = _prayerTimes['Isha']!;
-        _prayerEndTimes['Isha'] = "Until Fajr (next day)";
-
+        // Set the displayed times based on the selected method
+        _prayerTimes = Map.from(_cachedPrayerTimes[_selectedJuristicMethod]!);
+        _prayerEndTimes = Map.from(_cachedPrayerEndTimes[_selectedJuristicMethod]!);
         _isLoadingPrayerTimes = false;
         _lastCalculationDate = DateTime.now();
       });
 
       _updateUpcomingPrayer();
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _errorMessage = "Error calculating prayer times: $e";
         _isLoadingPrayerTimes = false;
@@ -215,7 +317,7 @@ class _MediumPrayerTimesScreenState extends State<MediumPrayerTimesScreen> {
     Timer.periodic(Duration(hours: 24), (timer) async {
       final now = DateTime.now();
       if (_coordinates != null) {
-        _calculatePrayerTimes(_coordinates!['latitude']!, _coordinates!['longitude']!, now);
+        await _calculateBothPrayerTimes(_coordinates!['latitude']!, _coordinates!['longitude']!, now);
       } else {
         try {
           _coordinates = await LocationManager.getCachedLocation();
@@ -223,7 +325,7 @@ class _MediumPrayerTimesScreenState extends State<MediumPrayerTimesScreen> {
             double latitude = _coordinates!['latitude']!;
             double longitude = _coordinates!['longitude']!;
             await _updateLocationName(latitude, longitude);
-            _calculatePrayerTimes(latitude, longitude, now);
+            await _calculateBothPrayerTimes(latitude, longitude, now);
           }
         } catch (e) {
           print("Failed to update prayer times: $e");
@@ -251,6 +353,7 @@ class _MediumPrayerTimesScreenState extends State<MediumPrayerTimesScreen> {
 
   void _updateUpcomingPrayer() {
     if (_errorMessage != null) {
+      if (!mounted) return;
       setState(() {
         _upcomingPrayer = 'N/A';
         _upcomingPrayerTime = 'N/A';
@@ -272,6 +375,7 @@ class _MediumPrayerTimesScreenState extends State<MediumPrayerTimesScreen> {
     for (int i = 0; i < prayerList.length; i++) {
       final prayerTime = _parseTimeToMinutes(prayerList[i]['time']);
       if (currentTime < prayerTime) {
+        if (!mounted) return;
         setState(() {
           _upcomingPrayer = prayerList[i]['name'];
           _upcomingPrayerTime = prayerList[i]['time'];
@@ -279,7 +383,7 @@ class _MediumPrayerTimesScreenState extends State<MediumPrayerTimesScreen> {
         return;
       }
     }
-
+    if (!mounted) return;
     setState(() {
       _upcomingPrayer = 'Fajr';
       _upcomingPrayerTime = _prayerTimes['Fajr']! + ' (Tomorrow)';

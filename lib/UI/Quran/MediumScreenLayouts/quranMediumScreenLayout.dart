@@ -52,6 +52,7 @@ class _QuranMediumScreenState extends State<QuranMediumScreen>
   Future<void> _initialize() async {
     await DatabaseHelper.database;
     await QuranRepository.init();
+    if (!mounted) return;
     setState(() {
       _isInitializing = false;
     });
@@ -759,8 +760,10 @@ class _FavoritesTabState extends State<FavoritesTab>
   }
 
   Future<void> _loadFavoritesRecords() async {
+    if (!mounted) return;
     setState(() => _loading = true);
     _favoriteRows = await QuranRepository.fetchFavoriteRecords();
+    if (!mounted) return;
     setState(() => _loading = false);
   }
 
