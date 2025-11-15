@@ -5,11 +5,13 @@ import 'package:adhan_dart/adhan_dart.dart';
 import 'package:hidaya_app/UI/Home/MediumScreenLayouts/PDFQuran_firstscreen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:hidaya_app/Utils/DatabaseHelper.dart';
-import 'package:hidaya_app/Utils/QuranData.dart'; // Import QuranData
-
+import 'package:hidaya_app/Utils/QuranData.dart';
+import '../../../Utils/SurahnamesMap.dart';
 import 'package:hidaya_app/UI/Home/MediumScreenLayouts/prayerTimesScreen.dart';
 import 'package:hidaya_app/UI/Home/MediumScreenLayouts/qiblaDirectionScreen.dart';
 import 'package:hidaya_app/UI/Home/MediumScreenLayouts/supplicationScreen.dart';
+import '../../../Utils/languageSelectorWidget.dart';
+import '../../../l10n/app_localizations.dart';
 import 'asmaulhusnaScreen.dart';
 import 'nabinamesScreen.dart';
 import '../../../Utils/colors.dart';
@@ -47,6 +49,7 @@ class _HomeMediumScreenLayoutState extends State<HomeMediumScreenLayout> {
   DateTime? _lastCalculationDate;
   Map<String, dynamic>? _verseOfTheDay; // Store the verse data
   String? _verseSurahReference; // Store the Surah reference
+  String? _localizedSurahRefrence;
 
   @override
   void initState() {
@@ -253,36 +256,36 @@ class _HomeMediumScreenLayoutState extends State<HomeMediumScreenLayout> {
   void _updateUpcomingPrayer() {
     if (_prayerTimes['Fajr'] == 'Loading...' || _prayerTimes['Fajr'] == 'Error') return;
 
+    final localizations = AppLocalizations.of(context);
     final now = DateTime.now();
     final currentTime = now.hour * 60 + now.minute;
 
     List<Map<String, dynamic>> prayerList = [
-      {'name': 'Fajr', 'time': _prayerTimes['Fajr']!},
-      {'name': 'Dhuhr', 'time': _prayerTimes['Dhuhr']!},
-      {'name': 'Asr', 'time': _prayerTimes['Asr']!},
-      {'name': 'Maghrib', 'time': _prayerTimes['Maghrib']!},
-      {'name': 'Isha', 'time': _prayerTimes['Isha']!},
+      {'name': 'Fajr', 'time': _prayerTimes['Fajr']!, 'localized': localizations?.fajr},
+      {'name': 'Dhuhr', 'time': _prayerTimes['Dhuhr']!, 'localized': localizations?.dhuhr},
+      {'name': 'Asr', 'time': _prayerTimes['Asr']!, 'localized': localizations?.asr},
+      {'name': 'Maghrib', 'time': _prayerTimes['Maghrib']!, 'localized': localizations?.maghrib},
+      {'name': 'Isha', 'time': _prayerTimes['Isha']!, 'localized': localizations?.isha},
     ];
 
-    String currentPrayer = 'None';
-    String upcomingPrayer = 'Fajr';
-    String upcomingPrayerTime = _prayerTimes['Fajr']! + ' (Tomorrow)';
+    String currentPrayer = "none"; // Add "none" to .arb files
+    String upcomingPrayer = localizations!.fajr;
+    String upcomingPrayerTime = _prayerTimes['Fajr']! + ' (${localizations!.tomorrow})';
 
-    // Calculate current and upcoming prayer
     for (int i = 0; i < prayerList.length; i++) {
       final prayerTime = _parseTimeToMinutes(prayerList[i]['time']);
       final nextPrayerIndex = (i + 1) % prayerList.length;
       final nextPrayerTime = nextPrayerIndex == 0
-          ? _parseTimeToMinutes(_prayerTimes['Fajr']!) + 24 * 60 // Next day's Fajr
+          ? _parseTimeToMinutes(_prayerTimes['Fajr']!) + 24 * 60
           : _parseTimeToMinutes(prayerList[nextPrayerIndex]['time']);
 
       if (currentTime >= prayerTime && currentTime < nextPrayerTime) {
-        currentPrayer = prayerList[i]['name'].toUpperCase();
+        currentPrayer = prayerList[i]['localized'];
         upcomingPrayer = nextPrayerIndex == 0
-            ? 'Fajr'
-            : prayerList[nextPrayerIndex]['name'].toUpperCase();
+            ? localizations.fajr
+            : prayerList[nextPrayerIndex]['localized'];
         upcomingPrayerTime = nextPrayerIndex == 0
-            ? _prayerTimes['Fajr']! + ' (Tomorrow)'
+            ? _prayerTimes['Fajr']! + ' (${localizations.tomorrow})'
             : prayerList[nextPrayerIndex]['time'];
         break;
       }
@@ -396,21 +399,26 @@ class _HomeMediumScreenLayoutState extends State<HomeMediumScreenLayout> {
     final mediaQuery = MediaQuery.of(context);
     final screenWidth = mediaQuery.size.width;
     final screenHeight = mediaQuery.size.height;
+// Use AppLocalizations for translated strings
+    final localizations = AppLocalizations.of(context);
 
     final List<Map<String, dynamic>> items = [
-      {'image': 'assets/images/Prayer.png', 'text': 'Prayer Time'},
+      {'image': 'assets/images/Prayer.png', 'text': localizations?.prayerTimes},
       {'image': 'assets/images/Quran_pdf.png', 'text': 'PDF Quran'},
-      {'image': 'assets/images/qibla.png', 'text': 'Qibla'},
-      {'image': 'assets/images/hand.png', 'text': 'Dua'},
-      {'image': 'assets/images/Allah.png', 'text': 'Asma ul Husna'},
-      {'image': 'assets/images/Eid.png', 'text': 'Nabi Names'},
+      {'image': 'assets/images/qibla.png', 'text': localizations?.qibla},
+      {'image': 'assets/images/hand.png', 'text': localizations?.dua},
+      {'image': 'assets/images/Allah.png', 'text': localizations?.asmaUlHusna},
+      {'image': 'assets/images/Eid.png', 'text': localizations?.nabiNames},
     ];
 
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
+        // actions: [
+        //   LanguageSelector(),
+        // ],
         title: Text(
-          'Home',
+          localizations!.home,
           style: GoogleFonts.poppins(
             color: AppColors.textPrimary,
             fontSize: 16,
@@ -450,7 +458,7 @@ class _HomeMediumScreenLayoutState extends State<HomeMediumScreenLayout> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  "Now ($_currentPrayer)",
+                                  "${localizations?.now} ($_currentPrayer)",
                                   style: GoogleFonts.poppins(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w600,
@@ -459,6 +467,7 @@ class _HomeMediumScreenLayoutState extends State<HomeMediumScreenLayout> {
                                 ),
                                 Text(
                                   _currentTime,
+                                  textDirection: TextDirection.ltr,
                                   style: GoogleFonts.poppins(
                                     fontSize: 24,
                                     fontWeight: FontWeight.bold,
@@ -481,7 +490,7 @@ class _HomeMediumScreenLayoutState extends State<HomeMediumScreenLayout> {
                               crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
                                 Text(
-                                  "Upcoming prayer",
+                                  localizations!.upcomingPrayer,
                                   style: GoogleFonts.poppins(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w600,
@@ -492,7 +501,7 @@ class _HomeMediumScreenLayoutState extends State<HomeMediumScreenLayout> {
                                   Container(
                                     width: screenWidth * 0.5,
                                     child: Text(
-                                      "Please allow location permission",
+                                      localizations!.locationPermissionRequired,
                                       style: GoogleFonts.poppins(
                                         fontSize: 13,
                                         fontWeight: FontWeight.w500,
@@ -513,6 +522,7 @@ class _HomeMediumScreenLayoutState extends State<HomeMediumScreenLayout> {
                                   ),
                                   Text(
                                     _upcomingPrayerTime,
+                                    textDirection: TextDirection.ltr,
                                     style: GoogleFonts.poppins(
                                       fontSize: 13,
                                       fontWeight: FontWeight.w600,
@@ -542,7 +552,7 @@ class _HomeMediumScreenLayoutState extends State<HomeMediumScreenLayout> {
                               focusNode: _focusNode,
                               controller: _controller,
                               decoration: InputDecoration(
-                                hintText: 'Search...',
+                                hintText: localizations!.search,
                                 hintStyle: TextStyle(
                                   color: Colors.grey,
                                   fontSize: 16,
@@ -560,50 +570,53 @@ class _HomeMediumScreenLayoutState extends State<HomeMediumScreenLayout> {
                 Padding(
                   padding: EdgeInsets.symmetric(
                       horizontal: screenWidth * 0.08, vertical: screenHeight * 0.01),
-                  child: GridView.builder(
-                    padding: EdgeInsets.zero,
-                    shrinkWrap: true,
-                    physics: NeverScrollableScrollPhysics(),
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 3,
-                      crossAxisSpacing: 16.0,
-                      mainAxisSpacing: 16.0,
-                    ),
-                    itemCount: items.length,
-                    itemBuilder: (context, index) {
-                      return GestureDetector(
-                        onTap: () {
-                          _navigateToScreen(context, items[index]['text']);
-                        },
-                        child: Card(
-                          color: Colors.white,
-                          elevation: 4,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Image.asset(
-                                items[index]['image'],
-                                width: screenWidth * 0.1,
-                                height: screenHeight * 0.05,
-                                fit: BoxFit.cover,
-                              ),
-                              SizedBox(height: screenHeight * 0.01),
-                              Text(
-                                items[index]['text'],
-                                style: GoogleFonts.poppins(
-                                  fontSize: screenWidth * 0.025,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.textSecondary,
+                  child: Directionality(
+                    textDirection: TextDirection.ltr,
+                    child: GridView.builder(
+                      padding: EdgeInsets.zero,
+                      shrinkWrap: true,
+                      physics: NeverScrollableScrollPhysics(),
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 3,
+                        crossAxisSpacing: 16.0,
+                        mainAxisSpacing: 16.0,
+                      ),
+                      itemCount: items.length,
+                      itemBuilder: (context, index) {
+                        return GestureDetector(
+                          onTap: () {
+                            _navigateToScreen(context, items[index]['text']);
+                          },
+                          child: Card(
+                            color: Colors.white,
+                            elevation: 4,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Image.asset(
+                                  items[index]['image'],
+                                  width: screenWidth * 0.1,
+                                  height: screenHeight * 0.05,
+                                  fit: BoxFit.cover,
                                 ),
-                              ),
-                            ],
+                                SizedBox(height: screenHeight * 0.01),
+                                Text(
+                                  items[index]['text'],
+                                  style: GoogleFonts.poppins(
+                                    fontSize: screenWidth * 0.025,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                      );
-                    },
+                        );
+                      },
+                    ),
                   ),
                 ),
                 SizedBox(height: screenHeight * 0.3),
@@ -628,7 +641,7 @@ class _HomeMediumScreenLayoutState extends State<HomeMediumScreenLayout> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        "Verse of the day:",
+                        "${localizations!.verseOfTheDay}:",
                         style: GoogleFonts.poppins(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -646,30 +659,33 @@ class _HomeMediumScreenLayoutState extends State<HomeMediumScreenLayout> {
                       SizedBox(
                         height: screenHeight * 0.15, // Fixed height for scrollable area
                         child: SingleChildScrollView(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Text(
-                                _verseOfTheDay?['arabic_text'] ?? 'Loading...',
-                                style: GoogleFonts.notoNaskhArabic(
-                                  fontSize: screenHeight * 0.02,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black,
+                          child: Directionality(
+                            textDirection: TextDirection.rtl,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Text(
+                                    _verseOfTheDay?['arabic_text'] ?? 'Loading...',
+                                    style: GoogleFonts.notoNaskhArabic(
+                                      fontSize: screenHeight * 0.02,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black,
+                                    ),
+
+                                  ),
+                                SizedBox(height: screenHeight * 0.01),
+                                Text(
+                                  _verseOfTheDay?['translation_text'] ?? 'Loading...',
+                                  style: GoogleFonts.notoNaskhArabic(
+                                    fontSize: screenHeight * 0.016,
+                                    color: Colors.black,
+                                  ),
+                                  textDirection: TextDirection.rtl,
+                                  maxLines: 100,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
-                                textDirection: TextDirection.rtl,
-                              ),
-                              SizedBox(height: screenHeight * 0.01),
-                              Text(
-                                _verseOfTheDay?['translation_text'] ?? 'Loading...',
-                                style: GoogleFonts.notoNaskhArabic(
-                                  fontSize: screenHeight * 0.016,
-                                  color: Colors.black,
-                                ),
-                                textDirection: TextDirection.rtl,
-                                maxLines: 100,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
                       ),

@@ -1,0 +1,22 @@
+{
+  "@@locale": "ar",
+  "prayerTimes": "أوقات الصلاة",
+  "upcomingPrayer": "الصلاة القادمة",
+  "prayerTime": "وقت الصلاة",
+  "prayerChart": "جدول الصلاة",
+  "juristicMethod": "المذهب الفقهي",
+  "fajr": "الفجر",
+  "sunrise": "الشروق",
+  "dhuhr": "الظهر",
+  "asr": "العصر",
+  "maghrib": "المغرب",
+  "isha": "العشاء",
+  "loading": "جار التحميل...",
+  "tomorrow": "غداً",
+  "until": "حتى",
+  "untilFajrNextDay": "حتى الفجر (اليوم التالي)",
+  "fetchingLocation": "جار تحديد الموقع...",
+  "locationPermissionRequired": "يرجى السماح بإذن الموقع",
+  "unknownLocation": "موقع غير معروف",
+  "locationUnavailable": "الموقع غير متاح (مخزن مؤقتاً)"
+}
