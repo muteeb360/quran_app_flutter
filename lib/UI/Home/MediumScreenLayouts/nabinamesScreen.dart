@@ -44,7 +44,7 @@ class NabiNamesScreenMedium extends StatelessWidget {
       ),
       body: Container(
         padding: EdgeInsets.only(top: screenHeight * 0.0),
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.background,
         child: Column(
           children: [
             // Swipeable horizontal list of cards

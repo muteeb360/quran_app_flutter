@@ -215,6 +215,7 @@ class _SurahMediumScreenState extends State<SurahMediumScreen> {
           style: GoogleFonts.poppins(
             fontSize: 18,
             fontWeight: FontWeight.w600,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
         ),
         content: StatefulBuilder(
@@ -226,7 +227,7 @@ class _SurahMediumScreenState extends State<SurahMediumScreen> {
                 children: [
                   Text(
                     'Arabic Text Size: ${tempArabicFontSize.round()}',
-                    style: GoogleFonts.poppins(fontSize: 14),
+                    style: GoogleFonts.poppins(fontSize: 14, color: Theme.of(context).colorScheme.onSurface,),
                   ),
                   Slider(
                     value: tempArabicFontSize,
@@ -242,7 +243,7 @@ class _SurahMediumScreenState extends State<SurahMediumScreen> {
                   ),
                   Text(
                     'Translation Text Size: ${tempTranslationFontSize.round()}',
-                    style: GoogleFonts.poppins(fontSize: 14),
+                    style: GoogleFonts.poppins(fontSize: 14,color: Theme.of(context).colorScheme.onSurface,),
                   ),
                   Slider(
                     value: tempTranslationFontSize,
@@ -262,6 +263,7 @@ class _SurahMediumScreenState extends State<SurahMediumScreen> {
                     style: GoogleFonts.poppins(
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -348,7 +350,6 @@ class _SurahMediumScreenState extends State<SurahMediumScreen> {
             ),
           ),
         ),
-        backgroundColor: Colors.transparent,
         actions: [
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert, color: Colors.white),
@@ -388,7 +389,7 @@ class _SurahMediumScreenState extends State<SurahMediumScreen> {
           ),
         ],
       ),
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).colorScheme.background,
       body:
       isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -510,9 +511,12 @@ class _SurahMediumScreenState extends State<SurahMediumScreen> {
                   context: context,
                   builder:
                       (context) => AlertDialog(
-                    title: Text('Ayah ${ayahIndex + 1}'),
-                    content: const Text(
+                    title: Text('Ayah ${ayahIndex + 1}',style: TextStyle(color: Theme.of(context).colorScheme.onSurface,),),
+                    content: Text(
                       'Do you want to set this ayah as your last read?',
+                      style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurface,
+                      ),
                     ),
                     actions: [
                       TextButton(
@@ -575,7 +579,7 @@ class AyahCard extends StatelessWidget {
         child: Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(10),
-            color: isLastRead ? Colors.green.withOpacity(0.1) : Colors.white,
+            color: isLastRead ? Colors.green.withOpacity(0.1) : Theme.of(context).colorScheme.surface,
           ),
           child: Padding(
             padding: const EdgeInsets.all(16.0),
@@ -586,8 +590,8 @@ class AyahCard extends StatelessWidget {
                   alignment: Alignment.centerLeft,
                   child: Text(
                     '﴾$displayAyahNumber﴿',
-                    style: const TextStyle(
-                      color: Colors.black,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurface,
                       fontSize: 10,
                       fontWeight: FontWeight.bold,
                     ),
@@ -602,7 +606,7 @@ class AyahCard extends StatelessWidget {
                         text: arabicText,
                         style: TextStyle(
                           fontFamily: 'NotoNaskhArabic',
-                          color: Colors.black,
+                          color: Theme.of(context).colorScheme.onSurface,
                           fontSize: arabicFontSize,
                           fontWeight: FontWeight.bold,
                         ),
@@ -611,7 +615,7 @@ class AyahCard extends StatelessWidget {
                         text: ' ۝',
                         style: TextStyle(
                           fontFamily: 'NotoNaskhArabic',
-                          color: Colors.black,
+                          color: Theme.of(context).colorScheme.onSurface,
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
                         ),

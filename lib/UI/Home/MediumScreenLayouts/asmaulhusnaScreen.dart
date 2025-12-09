@@ -10,6 +10,7 @@ class AsmaUlHusnaScreenMedium extends StatelessWidget {
     final screenHeight = MediaQuery.of(context).size.height;
 
     return Scaffold(
+      backgroundColor: Theme.of(context).colorScheme.background,
       appBar: AppBar(
         leading: IconButton(
           icon: Icon(Icons.arrow_back_ios, color: Colors.white),
@@ -43,7 +44,7 @@ class AsmaUlHusnaScreenMedium extends StatelessWidget {
       ),
       body: Container(
         padding: EdgeInsets.only(top: screenHeight * 0.0),
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.background,
         child: Column(
           children: [
             // Swipeable horizontal list of cards

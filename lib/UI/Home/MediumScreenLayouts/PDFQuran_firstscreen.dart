@@ -170,7 +170,7 @@ class _PdfquranFirstscreenState extends State<PdfquranFirstscreen> {
         ),
         backgroundColor: Colors.transparent,
       ),
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).colorScheme.background,
       body: Column(
         children: [
           SizedBox(height: screenHeight * 0.02),
@@ -249,7 +249,7 @@ class _PdfquranFirstscreenState extends State<PdfquranFirstscreen> {
         children: [
           Container(
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
                 BoxShadow(
@@ -289,7 +289,7 @@ class _PdfquranFirstscreenState extends State<PdfquranFirstscreen> {
                           style: GoogleFonts.poppins(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
-                            color: Colors.black87,
+                            color: Theme.of(context).colorScheme.onSurface,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -300,7 +300,7 @@ class _PdfquranFirstscreenState extends State<PdfquranFirstscreen> {
                           style: GoogleFonts.poppins(
                             fontSize: 14,
                             fontWeight: FontWeight.w400,
-                            color: Colors.grey[600],
+                              color: Theme.of(context).colorScheme.onSurface,
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -657,7 +657,7 @@ class _PDFViewerPageState extends State<PDFViewerPage> {
       builder: (context) => AlertDialog(
         title: Text(
           'Select Parah',
-          style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+          style: GoogleFonts.poppins(fontWeight: FontWeight.w600,color: Theme.of(context).colorScheme.onSurface),
         ),
         content: Container(
           width: double.maxFinite,
@@ -709,7 +709,7 @@ class _PDFViewerPageState extends State<PDFViewerPage> {
       builder: (context) => AlertDialog(
         title: Text(
           'Select Surah',
-          style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+          style: GoogleFonts.poppins(fontWeight: FontWeight.w600,color: Theme.of(context).colorScheme.onSurface),
         ),
         content: Container(
           width: double.maxFinite,
@@ -808,7 +808,7 @@ class _PDFViewerPageState extends State<PDFViewerPage> {
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: Text(
-              'Pinch to zoom in/out, swipe right for next page',
+              'Swipe right for next page',
               style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey[600]),
             ),
           ),
@@ -818,6 +818,7 @@ class _PDFViewerPageState extends State<PDFViewerPage> {
                 GestureDetector(
                   onHorizontalDragEnd: _handleSwipe,
                   child: PDFView(
+                    fitPolicy: FitPolicy.BOTH,
                     filePath: widget.filePath,
                     onViewCreated: (PDFViewController controller) async {
                       _pdfController = controller;

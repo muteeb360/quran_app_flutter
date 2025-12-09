@@ -23,7 +23,7 @@ class CustomBottomNavigation extends StatelessWidget {
     return BottomAppBar(
       height: 70,
       padding: EdgeInsets.zero,
-      color: AppColors.bottomnavbar,
+      color: Theme.of(context).colorScheme.surface,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: List.generate(_navItems.length, (index) {

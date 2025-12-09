@@ -50,7 +50,7 @@ class _SupplicationmainscreenState extends State<Supplicationmainscreen> {
         ),
         backgroundColor: Colors.transparent,
       ),
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).colorScheme.background,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -97,6 +97,7 @@ class _SupplicationmainscreenState extends State<Supplicationmainscreen> {
                     return Card(
                       elevation: 4,
                       margin: EdgeInsets.only(bottom: screenHeight * 0.02),
+                      color: Theme.of(context).colorScheme.surface,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(15),
                       ),
@@ -110,7 +111,7 @@ class _SupplicationmainscreenState extends State<Supplicationmainscreen> {
                               style: GoogleFonts.amiri(
                                 fontSize: 20,
                                 fontWeight: FontWeight.w600,
-                                color: Colors.black,
+                                color: Theme.of(context).colorScheme.primary,
                               ),
                               textDirection: TextDirection.rtl,
                               textAlign: TextAlign.right,
@@ -121,7 +122,7 @@ class _SupplicationmainscreenState extends State<Supplicationmainscreen> {
                               style: GoogleFonts.poppins(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w400,
-                                color: Colors.black,
+                                color: Theme.of(context).colorScheme.onSurface,
                               ),
                               textDirection: TextDirection.rtl,
                               textAlign: TextAlign.right,

@@ -11,6 +11,7 @@ import '../Utils/chat_service.dart';
 import '../Utils/colors.dart';
 import 'Home/MediumScreenLayouts/homeMediumScreenLayout.dart';
 import 'Quran/MediumScreenLayouts/surahMediumScreen.dart';
+import 'Settings/MediumScreenLayouts/settingsMediumScreenLayout.dart';
 
 class homescreen extends StatefulWidget {
   const homescreen({super.key});
@@ -27,6 +28,7 @@ class _homescreenState extends State<homescreen> {
     HomeContent(),
     QuranContent(),
     ChatbotContent(),
+    SettingsContent()
   ];
 
   void _onItemTapped(int index) {
@@ -121,6 +123,23 @@ class _ChatbotContentState extends State<ChatbotContent> {
   Widget build(BuildContext context) {
     return LayoutBuilder(builder: (context, constraints) {
       return ChatbotMediumScreen(chatService: ChatService(),);
+    });
+  }
+}
+
+//Settings Screen Content
+class SettingsContent extends StatefulWidget {
+  const SettingsContent({super.key});
+
+  @override
+  State<SettingsContent> createState() => _SettingsContentState();
+}
+
+class _SettingsContentState extends State<SettingsContent> {
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(builder: (context, constraints) {
+      return settingsMediumScreenLayout();
     });
   }
 }

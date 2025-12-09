@@ -83,10 +83,10 @@ class _QuranMediumScreenState extends State<QuranMediumScreen>
           padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.05),
           child: const Text("Quran"),
         ),
-        backgroundColor: AppColors.background,
+        backgroundColor: Theme.of(context).colorScheme.background,
         systemOverlayStyle: SystemUiOverlayStyle.dark,
       ),
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).colorScheme.background,
       body: Column(
         children: [
           Padding(
@@ -95,7 +95,7 @@ class _QuranMediumScreenState extends State<QuranMediumScreen>
               vertical: 12,
             ),
             child: Card(
-              color: AppColors.searchfieldbgcolor,
+              color: Theme.of(context).colorScheme.surfaceVariant,
               elevation: 4,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(19),
@@ -111,14 +111,20 @@ class _QuranMediumScreenState extends State<QuranMediumScreen>
                           return TextField(
                             focusNode: _focusNode,
                             controller: _controller,
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.onSurface,   // 👈 Text color
+                            ),
                             decoration: InputDecoration(
                               hintText: 'Search anything in Quran...',
-                              hintStyle: const TextStyle(
-                                color: AppColors.unselected,
+                              hintStyle: TextStyle(
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,  // 👈 Hint color
                                 fontSize: 16,
                               ),
                               border: InputBorder.none,
                               prefixIcon: Icon(Icons.search, color: color),
+                              filled: true,
+                              fillColor: Theme.of(context).colorScheme.surfaceVariant, // 👈 Background color
+                              contentPadding: const EdgeInsets.symmetric(vertical: 10),
                             ),
                           );
                         },
@@ -474,8 +480,8 @@ class _SurahTabState extends State<SurahTab>
                   ),
                   Text(
                     '$surahId',
-                    style: const TextStyle(
-                      color: Colors.black,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurface,
                       fontWeight: FontWeight.bold,
                       fontSize: 14,
                     ),
@@ -701,8 +707,8 @@ class _ParahTabState extends State<ParahTab>
               ),
               Text(
                 '${index + 1}',
-                style: const TextStyle(
-                  color: Colors.black,
+                style:  TextStyle(
+                  color: Theme.of(context).colorScheme.onSurface,
                   fontWeight: FontWeight.bold,
                   fontSize: 14,
                 ),
@@ -837,18 +843,19 @@ class _FavoritesTabState extends State<FavoritesTab>
                         children: [
                           Text(
                             englishName,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontWeight: FontWeight.bold,
+                              color: Theme.of(context).colorScheme.onSurface,
                               fontSize: 16,
                             ),
                           ),
                           const SizedBox(height: 6),
                           Text(
                             '$totalVerses verses',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontFamily: 'Poppins',
                               fontSize: 14,
-                              color: Colors.black54,
+                                color: Theme.of(context).colorScheme.onSurface,
                             ),
                           ),
                         ],

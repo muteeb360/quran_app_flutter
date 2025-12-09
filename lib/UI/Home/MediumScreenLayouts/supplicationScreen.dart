@@ -48,7 +48,7 @@ class _SupplicationScreenState extends State<SupplicationScreen> {
         ),
         backgroundColor: Colors.transparent,
       ),
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).colorScheme.background,
       body: FutureBuilder<List<Map<String, dynamic>>>(
         future: DatabaseHelper.getSupplicationCategories(),
         builder: (context, snapshot) {

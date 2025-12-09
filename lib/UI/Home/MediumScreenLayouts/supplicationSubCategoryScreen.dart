@@ -50,7 +50,7 @@ class _SupplicationSubCategoryScreenState extends State<SupplicationSubCategoryS
         ),
         backgroundColor: Colors.transparent,
       ),
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).colorScheme.background,
       body: FutureBuilder<List<Map<String, dynamic>>>(
         future: DatabaseHelper.getSupplicationSubCategories(widget.category),
         builder: (context, snapshot) {

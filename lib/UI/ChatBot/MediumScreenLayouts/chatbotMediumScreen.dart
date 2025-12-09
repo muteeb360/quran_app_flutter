@@ -243,9 +243,10 @@ class _ChatbotMediumScreenState extends State<ChatbotMediumScreen>
             showDialog(
               context: context,
               builder: (context) => AlertDialog(
-                title: const Text('Clear Chat History'),
-                content: const Text(
-                    'This will clear all messages and conversation memory. Are you sure?'
+                title:  Text('Clear Chat History', style: TextStyle(color: Theme.of(context).colorScheme.onSurface),),
+                content:  Text(
+                    'This will clear all messages and conversation memory. Are you sure?',
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface,),
                 ),
                 actions: [
                   TextButton(
@@ -319,7 +320,7 @@ class _ChatbotMediumScreenState extends State<ChatbotMediumScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: Theme.of(context).colorScheme.background,
       resizeToAvoidBottomInset: true,
       appBar: _buildAppBar(),
       body: GestureDetector(
@@ -371,7 +372,7 @@ class _ChatbotMediumScreenState extends State<ChatbotMediumScreen>
               100, // Approximate input area height
         ),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.start,
           children: [
             Container(
               padding: const EdgeInsets.all(24),
@@ -434,7 +435,7 @@ class _ChatbotMediumScreenState extends State<ChatbotMediumScreen>
         return Container(
           margin: const EdgeInsets.only(bottom: 8),
           child: Material(
-            color: Colors.white,
+            color: Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.circular(20),
             elevation: 2,
             child: InkWell(
@@ -455,13 +456,13 @@ class _ChatbotMediumScreenState extends State<ChatbotMediumScreen>
                     Icon(
                       Icons.lightbulb_outline,
                       size: 16,
-                      color: Colors.grey[600],
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                     const SizedBox(width: 8),
                     Text(
                       suggestion,
                       style: TextStyle(
-                        color: Colors.grey[700],
+                        color: Theme.of(context).colorScheme.onSurface,
                         fontSize: 14,
                       ),
                     ),
@@ -659,7 +660,7 @@ class _ChatbotMediumScreenState extends State<ChatbotMediumScreen>
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: Theme.of(context).colorScheme.surface,
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(20),
                 topRight: Radius.circular(20),
@@ -721,7 +722,7 @@ class _ChatbotMediumScreenState extends State<ChatbotMediumScreen>
         bottom: 16 + MediaQuery.of(context).viewInsets.bottom,
       ),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
@@ -737,7 +738,7 @@ class _ChatbotMediumScreenState extends State<ChatbotMediumScreen>
             Expanded(
               child: Container(
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF5F7FA),
+                  color: Theme.of(context).colorScheme.background,
                   borderRadius: BorderRadius.circular(25),
                   border: Border.all(
                     color: const Color(0xFF2E7D32).withOpacity(0.2),
@@ -745,6 +746,9 @@ class _ChatbotMediumScreenState extends State<ChatbotMediumScreen>
                 ),
                 child: TextField(
                   controller: _messageController,
+                  style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurface,
+                  ),
                   decoration: const InputDecoration(
                     hintText: 'Ask about Islam...',
                     border: InputBorder.none,

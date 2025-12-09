@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'dart:async';
 import 'package:adhan_dart/adhan_dart.dart';
 import 'package:hidaya_app/UI/Home/MediumScreenLayouts/PDFQuran_firstscreen.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:hidaya_app/Utils/DatabaseHelper.dart';
 import 'package:hidaya_app/Utils/QuranData.dart';
@@ -12,6 +13,7 @@ import 'package:hidaya_app/UI/Home/MediumScreenLayouts/qiblaDirectionScreen.dart
 import 'package:hidaya_app/UI/Home/MediumScreenLayouts/supplicationScreen.dart';
 import '../../../Utils/languageSelectorWidget.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../theme_provider.dart';
 import 'asmaulhusnaScreen.dart';
 import 'nabinamesScreen.dart';
 import '../../../Utils/colors.dart';
@@ -316,7 +318,7 @@ class _HomeMediumScreenLayoutState extends State<HomeMediumScreenLayout> {
 
   void _navigateToScreen(BuildContext context, String itemText) {
     switch (itemText) {
-      case 'Prayer Time':
+      case 'Prayer Times':
         Navigator.push(context, MaterialPageRoute(builder: (context) => MediumPrayerTimesScreen()));
         break;
       case 'PDF Quran':
@@ -354,7 +356,7 @@ class _HomeMediumScreenLayoutState extends State<HomeMediumScreenLayout> {
       if (ayah.isNotEmpty) {
         setState(() {
           _verseOfTheDay = ayah.first;
-          _verseSurahReference = _getSurahReference(lastId); // Updated method
+          _verseSurahReference = _getSurahReference(lastId);
         });
         return;
       }
@@ -396,6 +398,8 @@ class _HomeMediumScreenLayoutState extends State<HomeMediumScreenLayout> {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    bool isDark = themeProvider.themeMode == ThemeMode.dark;
     final mediaQuery = MediaQuery.of(context);
     final screenWidth = mediaQuery.size.width;
     final screenHeight = mediaQuery.size.height;
@@ -429,8 +433,8 @@ class _HomeMediumScreenLayoutState extends State<HomeMediumScreenLayout> {
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
-      backgroundColor: AppColors.background,
-      resizeToAvoidBottomInset: true,
+      backgroundColor: Theme.of(context).colorScheme.background,
+      //resizeToAvoidBottomInset: true,
       body: Stack(
         children: [
           SingleChildScrollView(
@@ -444,7 +448,7 @@ class _HomeMediumScreenLayoutState extends State<HomeMediumScreenLayout> {
                       height: screenHeight * 0.25,
                       decoration: BoxDecoration(
                         image: DecorationImage(
-                          image: AssetImage('assets/images/home_bg.png'),
+                          image: AssetImage('assets/images/noon.png'),
                           fit: BoxFit.fill,
                         ),
                       ),
@@ -505,7 +509,7 @@ class _HomeMediumScreenLayoutState extends State<HomeMediumScreenLayout> {
                                       style: GoogleFonts.poppins(
                                         fontSize: 13,
                                         fontWeight: FontWeight.w500,
-                                        color: Colors.black,
+                                        color: Theme.of(context).colorScheme.onSurface,
                                       ),
                                       textAlign: TextAlign.end,
                                     ),
@@ -541,7 +545,7 @@ class _HomeMediumScreenLayoutState extends State<HomeMediumScreenLayout> {
                       child: Padding(
                         padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.07),
                         child: Card(
-                          color: AppColors.searchfieldbgcolor,
+                          color: Theme.of(context).colorScheme.surfaceVariant,
                           elevation: 4,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(19),
@@ -551,14 +555,20 @@ class _HomeMediumScreenLayoutState extends State<HomeMediumScreenLayout> {
                             child: TextField(
                               focusNode: _focusNode,
                               controller: _controller,
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.onSurface,   // 👈 Text color
+                              ),
                               decoration: InputDecoration(
                                 hintText: localizations!.search,
                                 hintStyle: TextStyle(
-                                  color: Colors.grey,
+                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                                   fontSize: 16,
                                 ),
                                 border: InputBorder.none,
                                 prefixIcon: Icon(Icons.search, color: _iconColor),
+                                filled: true,
+                                fillColor: Theme.of(context).colorScheme.surfaceVariant, // 👈 Background color
+                                contentPadding: const EdgeInsets.symmetric(vertical: 10),
                               ),
                             ),
                           ),
@@ -588,7 +598,7 @@ class _HomeMediumScreenLayoutState extends State<HomeMediumScreenLayout> {
                             _navigateToScreen(context, items[index]['text']);
                           },
                           child: Card(
-                            color: Colors.white,
+                            color: Theme.of(context).colorScheme.surface,
                             elevation: 4,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(16),
@@ -600,7 +610,7 @@ class _HomeMediumScreenLayoutState extends State<HomeMediumScreenLayout> {
                                   items[index]['image'],
                                   width: screenWidth * 0.1,
                                   height: screenHeight * 0.05,
-                                  fit: BoxFit.cover,
+                                  color: Theme.of(context).colorScheme.onSurface,
                                 ),
                                 SizedBox(height: screenHeight * 0.01),
                                 Text(
@@ -608,7 +618,7 @@ class _HomeMediumScreenLayoutState extends State<HomeMediumScreenLayout> {
                                   style: GoogleFonts.poppins(
                                     fontSize: screenWidth * 0.025,
                                     fontWeight: FontWeight.bold,
-                                    color: AppColors.textSecondary,
+                                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                                   ),
                                 ),
                               ],
@@ -623,73 +633,74 @@ class _HomeMediumScreenLayoutState extends State<HomeMediumScreenLayout> {
               ],
             ),
           ),
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.07),
-              child: Card(
-                color: AppColors.homeayatcardcolor,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-                ),
-                child: Padding(
-                  padding: EdgeInsets.all(screenWidth * 0.04),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "${localizations!.verseOfTheDay}:",
-                        style: GoogleFonts.poppins(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black,
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: SafeArea(
+              top: false,
+              child: Padding(
+                padding: EdgeInsets.only(right: screenWidth*0.07,left: screenWidth*0.07,top: screenHeight*0.63),
+                child: Card(
+                  color: Theme.of(context).colorScheme.surface,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+                  ),
+                  child: Padding(
+                    padding: EdgeInsets.all(screenWidth * 0.04),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "${localizations!.verseOfTheDay}:",
+                          style: GoogleFonts.poppins(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Theme.of(context).colorScheme.onSurface,
+                          ),
                         ),
-                      ),
-                      Text(
-                        _verseSurahReference ?? 'Loading...',
-                        style: GoogleFonts.poppins(
-                          fontSize: 13,
-                          color: Colors.black,
+                        Text(
+                          _verseSurahReference ?? 'Loading...',
+                          style: GoogleFonts.poppins(
+                            fontSize: 13,
+                            color: Theme.of(context).colorScheme.onSurface,
+                          ),
                         ),
-                      ),
-                      SizedBox(height: screenHeight * 0.02),
-                      SizedBox(
-                        height: screenHeight * 0.15, // Fixed height for scrollable area
-                        child: SingleChildScrollView(
-                          child: Directionality(
-                            textDirection: TextDirection.rtl,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Text(
-                                    _verseOfTheDay?['arabic_text'] ?? 'Loading...',
-                                    style: GoogleFonts.notoNaskhArabic(
-                                      fontSize: screenHeight * 0.02,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.black,
-                                    ),
+                        SizedBox(height: screenHeight * 0.02),
+                        SizedBox(
+                          height: screenHeight * 0.154,
+                          child: SingleChildScrollView(
+                            child: Directionality(
+                              textDirection: TextDirection.rtl,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Text(
+                                      _verseOfTheDay?['arabic_text'] ?? 'Loading...',
+                                      style: GoogleFonts.notoNaskhArabic(
+                                        fontSize: screenHeight * 0.02,
+                                        fontWeight: FontWeight.bold,
+                                        color: Theme.of(context).colorScheme.onSurface,
+                                      ),
 
+                                    ),
+                                  SizedBox(height: screenHeight * 0.01),
+                                  Text(
+                                    _verseOfTheDay?['translation_text'] ?? 'Loading...',
+                                    style: GoogleFonts.notoNaskhArabic(
+                                      fontSize: screenHeight * 0.016,
+                                      color: Theme.of(context).colorScheme.onSurface,
+                                    ),
+                                    textDirection: TextDirection.rtl,
+                                    maxLines: 100,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
-                                SizedBox(height: screenHeight * 0.01),
-                                Text(
-                                  _verseOfTheDay?['translation_text'] ?? 'Loading...',
-                                  style: GoogleFonts.notoNaskhArabic(
-                                    fontSize: screenHeight * 0.016,
-                                    color: Colors.black,
-                                  ),
-                                  textDirection: TextDirection.rtl,
-                                  maxLines: 100,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),

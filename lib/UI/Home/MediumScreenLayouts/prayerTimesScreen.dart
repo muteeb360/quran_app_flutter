@@ -443,7 +443,7 @@ class _MediumPrayerTimesScreenState extends State<MediumPrayerTimesScreen> {
         ),
         backgroundColor: Colors.transparent,
       ),
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).colorScheme.background,
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -460,7 +460,7 @@ class _MediumPrayerTimesScreenState extends State<MediumPrayerTimesScreen> {
                     style: GoogleFonts.poppins(
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
-                      color: Colors.black,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                   DropdownButton<String>(
@@ -473,7 +473,7 @@ class _MediumPrayerTimesScreenState extends State<MediumPrayerTimesScreen> {
                           style: GoogleFonts.poppins(
                             fontSize: 16,
                             fontWeight: FontWeight.w500,
-                            color: Colors.black,
+                            color: Theme.of(context).colorScheme.onSurface,
                           ),
                         ),
                       );
@@ -599,7 +599,7 @@ class _MediumPrayerTimesScreenState extends State<MediumPrayerTimesScreen> {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
                 ),
-                color: Colors.white,
+                color: Theme.of(context).colorScheme.surface,
                 elevation: 4,
                 margin: EdgeInsets.all(16),
                 child: Padding(
@@ -615,6 +615,7 @@ class _MediumPrayerTimesScreenState extends State<MediumPrayerTimesScreen> {
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 20,
+                            color: Theme.of(context).colorScheme.onSurface,
                           ),
                         ),
                       ),
@@ -626,7 +627,7 @@ class _MediumPrayerTimesScreenState extends State<MediumPrayerTimesScreen> {
                           style: TextStyle(
                             fontWeight: FontWeight.w500,
                             fontSize: 13,
-                            color: _errorMessage != null ? Colors.red : Colors.black,
+                            color: _errorMessage != null ? Colors.red : Theme.of(context).colorScheme.onSurface,
                           ),
                         ),
                       ),
@@ -729,13 +730,13 @@ class PrayerTimeItem extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  Icon(icon, color: AppColors.unselected),
+                  Icon(icon, color: Theme.of(context).colorScheme.onSurface,),
                   SizedBox(width: 8.0),
                   Text(
                     title,
                     style: TextStyle(
                       fontSize: 19,
-                      color: AppColors.unselected,
+                      color: Theme.of(context).colorScheme.onSurface,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
@@ -746,7 +747,7 @@ class PrayerTimeItem extends StatelessWidget {
                 children: [
                   Text(
                     time,
-                    style: TextStyle(fontSize: 17, color: AppColors.unselected),
+                    style: TextStyle(fontSize: 17, color: Theme.of(context).colorScheme.onSurface,),
                   ),
                   Text(
                     "Until $endTime",
