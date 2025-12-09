@@ -663,77 +663,84 @@ class _HomeMediumScreenLayoutState extends State<HomeMediumScreenLayout> {
           ),
           Align(
             alignment: Alignment.bottomCenter,
-            child: SafeArea(
-              top: false,
-              child: Padding(
-                padding: EdgeInsets.only(right: screenWidth*0.07,left: screenWidth*0.07,top: screenHeight*0.63),
-                child: Card(
-                  color: Theme.of(context).colorScheme.surfaceVariant,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-                  ),
-                  child: Padding(
-                    padding: EdgeInsets.all(screenWidth * 0.04),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "${localizations!.verseOfTheDay}:",
-                          style: GoogleFonts.poppins(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Theme.of(context).colorScheme.onSurface,
-                          ),
-                        ),
-                        Text(
-                          _verseSurahReference ?? 'Loading...',
-                          style: GoogleFonts.poppins(
-                            fontSize: 13,
-                            color: Theme.of(context).colorScheme.onSurface,
-                          ),
-                        ),
-                        SizedBox(height: screenHeight * 0.02),
-                        SizedBox(
-                          height: screenHeight * 0.154,
-                          child: SingleChildScrollView(
-                            child: Directionality(
-                              textDirection: TextDirection.rtl,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  Text(
-                                      _verseOfTheDay?['arabic_text'] ?? 'Loading...',
-                                      style: GoogleFonts.notoNaskhArabic(
-                                        fontSize: screenHeight * 0.02,
+            child: Padding(
+                padding: EdgeInsets.only(top: screenHeight * 0.63), // ← here
+                child: Container(
+                    width: double.infinity,  // ← this forces full width
+                    padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.07),
+                    child: Card(
+                      color: Theme.of(context).colorScheme.surfaceVariant,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+                      ),
+                      margin: EdgeInsets.zero,
+                      child: Padding(
+                        padding: EdgeInsets.only(top:screenWidth*0.04, left: screenWidth*0.04, right: screenWidth*0.04),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch, // ← ADD THIS
+                          mainAxisSize: MainAxisSize.max,
+                              children: [
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      "${localizations!.verseOfTheDay}:",
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 16,
                                         fontWeight: FontWeight.bold,
                                         color: Theme.of(context).colorScheme.onSurface,
                                       ),
+                                    ),
+                                    Text(
+                                      _verseSurahReference ?? 'Loading...',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 13,
+                                        color: Theme.of(context).colorScheme.onSurface,
+                                      ),
+                                    ),
+                                  ],
+                                ),
 
-                                    ),
-                                  SizedBox(height: screenHeight * 0.01),
-                                  Text(
-                                    _verseOfTheDay?['translation_text'] ?? 'Loading...',
-                                    style: GoogleFonts.notoNaskhArabic(
-                                      fontSize: screenHeight * 0.016,
-                                      color: Theme.of(context).colorScheme.onSurface,
-                                    ),
-                                    textDirection: TextDirection.rtl,
-                                    maxLines: 100,
-                                    overflow: TextOverflow.ellipsis,
+                                SizedBox(height: screenHeight * 0.02),
+                                Expanded(
+                                  child: SingleChildScrollView(
+                                    child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.end,
+                                        children: [
+                                          Text(
+                                            _verseOfTheDay?['arabic_text'] ?? 'Loading...',
+                                            style: GoogleFonts.notoNaskhArabic(
+                                                fontSize: screenHeight * 0.02,
+                                                fontWeight: FontWeight.bold,
+                                                color: Theme.of(context).colorScheme.onSurface,
+                                              ),
+                                            textDirection: TextDirection.rtl,
+                                            maxLines: 100,
+                                            overflow: TextOverflow.ellipsis,
+                                            ),
+                                          SizedBox(height: screenHeight * 0.01),
+                                          Text(
+                                            _verseOfTheDay?['translation_text'] ?? 'Loading...',
+                                            style: GoogleFonts.notoNaskhArabic(
+                                              fontSize: screenHeight * 0.016,
+                                              color: Theme.of(context).colorScheme.onSurface,
+                                            ),
+                                            textDirection: TextDirection.rtl,
+                                            maxLines: 100,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ],
+                                      ),
                                   ),
-                                ],
-                              ),
+                                ),
+                                SizedBox(height: MediaQuery.of(context).viewInsets.bottom),
+                              ],
                             ),
-                          ),
-                        ),
-                        SizedBox(height: MediaQuery.of(context).viewInsets.bottom),
-                      ],
+                      ),
                     ),
                   ),
-                ),
               ),
-            ),
           ),
         ],
       ),

@@ -19,6 +19,9 @@ class _QuranMediumScreenState extends State<QuranMediumScreen>
   final ValueNotifier<Color> _iconColor = ValueNotifier(AppColors.unselected);
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
+  final GlobalKey _searchCardKey = GlobalKey();
+  OverlayEntry? _overlayEntry;
+  List<Map<String, String>> _searchResults = [];
 
   // Cached images
   final AssetImage _starImage = const AssetImage('assets/images/star.png');
@@ -41,11 +44,11 @@ class _QuranMediumScreenState extends State<QuranMediumScreen>
     // Focus & text listeners update only the icon color notifier
     _focusNode.addListener(() {
       _iconColor.value =
-      _focusNode.hasFocus ? AppColors.main : AppColors.unselected;
+          _focusNode.hasFocus ? AppColors.main : AppColors.unselected;
     });
     _controller.addListener(() {
       _iconColor.value =
-      _controller.text.isNotEmpty ? AppColors.main : AppColors.unselected;
+          _controller.text.isNotEmpty ? AppColors.main : AppColors.unselected;
     });
   }
 
@@ -60,12 +63,214 @@ class _QuranMediumScreenState extends State<QuranMediumScreen>
 
   @override
   void dispose() {
+    _removeOverlay();
     _tabController.dispose();
     _controller.dispose();
     _focusNode.dispose();
     _iconColor.dispose();
     super.dispose();
   }
+
+  void _removeOverlay() {
+    if (_overlayEntry != null) {
+      try {
+        _overlayEntry!.remove();
+      } catch (_) {
+        // ignore removal errors
+      }
+      _overlayEntry = null;
+    }
+  }
+
+  void _showOverlay() {
+    // If overlay already inserted, just rebuild it
+    if (_overlayEntry != null) {
+      _overlayEntry!.markNeedsBuild();
+      return;
+    }
+
+    final overlay = Overlay.of(context);
+    if (overlay == null) return;
+
+    _overlayEntry = OverlayEntry(builder: (context) {
+      // compute position from search card
+      final renderBox = _searchCardKey.currentContext?.findRenderObject() as RenderBox?;
+      final top = renderBox != null ? renderBox.localToGlobal(Offset.zero).dy + renderBox.size.height : 120.0;
+      final left = renderBox != null ? renderBox.localToGlobal(Offset.zero).dx : 16.0;
+      final width = renderBox != null ? renderBox.size.width : MediaQuery.of(context).size.width - 32.0;
+
+      return Positioned(
+        left: left,
+        top: top,
+        width: width,
+        child: Material(
+          elevation: 8,
+          borderRadius: BorderRadius.circular(12),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: 300,
+              minWidth: width,
+            ),
+            child: ListView.separated(
+              padding: EdgeInsets.zero,
+              shrinkWrap: true,
+              itemCount: _searchResults.length,
+              separatorBuilder: (_, __) => const Divider(height: 1),
+              itemBuilder: (context, index) {
+                final item = _searchResults[index];
+                final isParah = item['type'] == 'parah';
+                final title = item['name'] ?? item['english'] ?? ''; // Use english if name doesn't exist
+                final subtitle = item['arabic'] ?? '';
+                return ListTile(
+                  title: Text(title),
+                  subtitle: subtitle.isNotEmpty ? Text(subtitle) : null,
+                  onTap: () {
+                    // close overlay first
+                    _removeOverlay();
+
+                    // navigate accordingly
+                    if (isParah) {
+                      // Find parah by name match
+                      final parahIndex = _ParahTabState.parahs.indexWhere((p) => p['name'] == item['name']);
+                      if (parahIndex >= 0) {
+                        // Navigate to Parah screen
+                        Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) => ParaMediumScreen(parahNumber: parahIndex + 1)
+                            )
+                        );
+                      } else {
+                        // Fallback: check if it's numeric parah search
+                        final match = RegExp(r'Para?\s*(\d+)').firstMatch(item['name'] ?? '');
+                        if (match != null) {
+                          final parahNum = int.tryParse(match.group(1)!);
+                          if (parahNum != null && parahNum >= 1 && parahNum <= 30) {
+                            Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) => ParaMediumScreen(parahNumber: parahNum)
+                                )
+                            );
+                          }
+                        }
+                      }
+                    } else {
+                      // find surah id by name match
+                      final surahIndex = _SurahTabState.surahs.indexWhere((s) => s['name'] == item['name']);
+                      final surahId = surahIndex >= 0 ? surahIndex + 1 : 1;
+                      Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => SurahMediumScreen(surahNumber: surahId))
+                      );
+                    }
+                  },
+                );
+              },
+            ),
+          ),
+        ),
+      );
+    });
+
+    overlay.insert(_overlayEntry!);
+  }
+
+  void _onSearchChanged(String query) {
+    query = query.trim();
+    if (query.isEmpty) {
+      _searchResults = [];
+      _removeOverlay();
+      return;
+    }
+
+    _searchResults = [];
+
+    final q = query.toLowerCase();
+
+    // 1. Search in surahs - FIXED: Use null-safe checks
+    final surahResults = _SurahTabState.surahs.where((s) {
+      final name = (s['name'] ?? '').toLowerCase();
+      final arabic = (s['arabic'] ?? '').toLowerCase();
+      return name.contains(q) || arabic.contains(q) || name.startsWith(q);
+    }).toList();
+
+    _searchResults.addAll(surahResults);
+
+    // 2. Search in parahs - FIXED: Use null-safe checks
+    final parahResults = _ParahTabState.parahs.where((p) {
+      final name = (p['name'] ?? p['english'] ?? '').toLowerCase();
+      final arabic = (p['arabic'] ?? '').toLowerCase();
+
+      // Check for different patterns
+      if (name.contains(q) || arabic.contains(q)) {
+        return true;
+      }
+
+      // Check for numeric search like "1", "para 1", "parah 1", "juz 1"
+      if (q.contains('para') || q.contains('parah') || q.contains('juz') || RegExp(r'^\d+$').hasMatch(q)) {
+        final numberMatch = RegExp(r'(\d+)').firstMatch(name);
+        if (numberMatch != null) {
+          final numStr = numberMatch.group(1);
+          if (numStr != null && (q.contains(numStr) || numStr == q)) {
+            return true;
+          }
+        }
+      }
+
+      return false;
+    }).map((p) => {
+      ...p,
+      'type': 'parah',
+    }).toList();
+
+    _searchResults.addAll(parahResults);
+
+    // 3. If query is purely numeric, also add a simple parah entry
+    final numeric = int.tryParse(query);
+    if (numeric != null && numeric >= 1 && numeric <= 30) {
+      // Check if not already in results
+      final alreadyExists = _searchResults.any((item) {
+        if (item['type'] == 'parah') {
+          final name = (item['name'] ?? item['english'] ?? '').toLowerCase();
+          return name.contains('para $numeric') ||
+              name.contains('parah $numeric') ||
+              name.contains('$numeric');
+        }
+        return false;
+      });
+
+      if (!alreadyExists) {
+        _searchResults.insert(0, {
+          'name': 'Para $numeric',
+          'arabic': '', // optional
+          'type': 'parah',
+          'id': '$numeric',
+        });
+      }
+    }
+
+    // 4. Sort results: parahs first, then surahs
+    _searchResults.sort((a, b) {
+      final aIsParah = a['type'] == 'parah';
+      final bIsParah = b['type'] == 'parah';
+
+      if (aIsParah && !bIsParah) return -1;
+      if (!aIsParah && bIsParah) return 1;
+
+      // If both are same type, sort by name
+      final aName = a['name'] ?? a['english'] ?? '';
+      final bName = b['name'] ?? b['english'] ?? '';
+      return aName.compareTo(bName);
+    });
+
+    if (_searchResults.isEmpty) {
+      _removeOverlay();
+    } else {
+      _showOverlay();
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -87,226 +292,249 @@ class _QuranMediumScreenState extends State<QuranMediumScreen>
         systemOverlayStyle: SystemUiOverlayStyle.dark,
       ),
       backgroundColor: Theme.of(context).colorScheme.background,
-      body: Column(
-        children: [
-          Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: screenWidth * 0.07,
-              vertical: 12,
-            ),
-            child: Card(
-              color: Theme.of(context).colorScheme.surfaceVariant,
-              elevation: 4,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(19),
+      body: GestureDetector(
+        onTap: () {
+          _removeOverlay();
+          FocusScope.of(context).unfocus();
+        },
+        child: Column(
+          children: [
+            Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: screenWidth * 0.07,
+                vertical: 12,
               ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: ValueListenableBuilder<Color>(
+              child: Card(
+                key: _searchCardKey,
+                color: Theme.of(context).colorScheme.surfaceVariant,
+                elevation: 4,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(19),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: ValueListenableBuilder<Color>(
+                          valueListenable: _iconColor,
+                          builder: (context, color, _) {
+                            return TextField(
+                              focusNode: _focusNode,
+                              controller: _controller,
+                              onChanged: _onSearchChanged,
+                              style: TextStyle(
+                                color:
+                                    Theme.of(
+                                      context,
+                                    ).colorScheme.onSurface, // 👈 Text color
+                              ),
+                              decoration: InputDecoration(
+                                hintText: 'Search anything in Quran...',
+                                hintStyle: TextStyle(
+                                  color:
+                                      Theme.of(context)
+                                          .colorScheme
+                                          .onSurfaceVariant, // 👈 Hint color
+                                  fontSize: 16,
+                                ),
+                                border: InputBorder.none,
+                                prefixIcon: Icon(Icons.search, color: color),
+                                filled: true,
+                                fillColor:
+                                    Theme.of(context)
+                                        .colorScheme
+                                        .surfaceVariant, // 👈 Background color
+                                contentPadding: const EdgeInsets.symmetric(
+                                  vertical: 10,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      ValueListenableBuilder<Color>(
                         valueListenable: _iconColor,
                         builder: (context, color, _) {
-                          return TextField(
-                            focusNode: _focusNode,
-                            controller: _controller,
-                            style: TextStyle(
-                              color: Theme.of(context).colorScheme.onSurface,   // 👈 Text color
-                            ),
-                            decoration: InputDecoration(
-                              hintText: 'Search anything in Quran...',
-                              hintStyle: TextStyle(
-                                color: Theme.of(context).colorScheme.onSurfaceVariant,  // 👈 Hint color
-                                fontSize: 16,
-                              ),
-                              border: InputBorder.none,
-                              prefixIcon: Icon(Icons.search, color: color),
-                              filled: true,
-                              fillColor: Theme.of(context).colorScheme.surfaceVariant, // 👈 Background color
-                              contentPadding: const EdgeInsets.symmetric(vertical: 10),
-                            ),
+                          if (_controller.text.isEmpty)
+                            return const SizedBox.shrink();
+                          return IconButton(
+                            icon: Icon(Icons.close, color: color),
+                            onPressed: () {
+                              _controller.clear();
+                              setState(() {
+                                _searchResults.clear();
+                              });
+                              _removeOverlay();
+                            },
                           );
                         },
                       ),
-                    ),
-                    ValueListenableBuilder<Color>(
-                      valueListenable: _iconColor,
-                      builder: (context, color, _) {
-                        if (_controller.text.isEmpty)
-                          return const SizedBox.shrink();
-                        return IconButton(
-                          icon: Icon(Icons.close, color: color),
-                          onPressed: () {
-                            _controller.clear();
-                          },
-                        );
-                      },
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
 
-          // Spacing
-          SizedBox(height: screenHeight * 0.02),
+            // Spacing
+            SizedBox(height: screenHeight * 0.02),
 
-          // Last read card
-          ValueListenableBuilder<Map<String, dynamic>?>(
-            valueListenable: QuranRepository.lastRead,
-            builder: (context, lastRead, _) {
-              final lr =
-                  lastRead ??
-                      {
-                        'surah_number': 1,
-                        'ayah_number': 1,
-                        'surah_name': 'Al-Fatihah',
-                        'arabic_name': 'الفَاتِحَة',
-                        'source': 'surah',
-                      };
-              return GestureDetector(
-                onTap: () {
-                  final source = lr['source'] ?? 'surah';
-                  if (source == 'parah') {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder:
-                            (context) => ParaMediumScreen(
-                          parahNumber: lr['parah_number'] ?? 1,
-                          lastReadSurah: lr['surah_number'],
-                          lastReadAyah: lr['ayah_number'],
+            // Last read card
+            ValueListenableBuilder<Map<String, dynamic>?>(
+              valueListenable: QuranRepository.lastRead,
+              builder: (context, lastRead, _) {
+                final lr =
+                    lastRead ??
+                    {
+                      'surah_number': 1,
+                      'ayah_number': 1,
+                      'surah_name': 'Al-Fatihah',
+                      'arabic_name': 'الفَاتِحَة',
+                      'source': 'surah',
+                    };
+                return GestureDetector(
+                  onTap: () {
+                    final source = lr['source'] ?? 'surah';
+                    if (source == 'parah') {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder:
+                              (context) => ParaMediumScreen(
+                                parahNumber: lr['parah_number'] ?? 1,
+                                lastReadSurah: lr['surah_number'],
+                                lastReadAyah: lr['ayah_number'],
+                              ),
                         ),
-                      ),
-                    );
-                  } else {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder:
-                            (context) => SurahMediumScreen(
-                          surahNumber: lr['surah_number'] ?? 1,
-                          lastReadAyah: lr['ayah_number'],
+                      );
+                    } else {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder:
+                              (context) => SurahMediumScreen(
+                                surahNumber: lr['surah_number'] ?? 1,
+                                lastReadAyah: lr['ayah_number'],
+                              ),
                         ),
-                      ),
-                    );
-                  }
-                },
-                child: Card(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(15),
-                  ),
-                  elevation: 4,
-                  child: Container(
-                    width: screenWidth * 0.84,
-                    height: screenHeight * 0.19,
-                    decoration: BoxDecoration(
+                      );
+                    }
+                  },
+                  child: Card(
+                    shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(15),
-                      gradient: const LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [Color(0xFF8ED9AF), Color(0xFF44C17B)],
+                    ),
+                    elevation: 4,
+                    child: Container(
+                      width: screenWidth * 0.84,
+                      height: screenHeight * 0.19,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(15),
+                        gradient: const LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [Color(0xFF8ED9AF), Color(0xFF44C17B)],
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Padding(
+                            padding: EdgeInsets.only(left: screenWidth * 0.02),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Image(
+                                      image: _bookImage,
+                                      width: screenWidth * 0.06,
+                                      height: screenHeight * 0.06,
+                                    ),
+                                    SizedBox(width: screenWidth * 0.02),
+                                    const Text(
+                                      "Last Read",
+                                      style: TextStyle(
+                                        fontFamily: 'Poppins',
+                                        fontSize: 13,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                SizedBox(height: screenHeight * 0.02),
+                                Text(
+                                  lr['surah_name'] ?? 'Al-Fatihah',
+                                  style: const TextStyle(
+                                    fontFamily: 'Poppins',
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                Text(
+                                  "Ayah No: ${lr['ayah_number'] ?? 1}",
+                                  style: const TextStyle(
+                                    fontFamily: 'Poppins',
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w200,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                Padding(
+                                  padding: EdgeInsets.only(
+                                    right: screenWidth * 0.02,
+                                    bottom: screenHeight * 0.01,
+                                  ),
+                                  child: Image(
+                                    image: _quranCardImage,
+                                    width: screenWidth * 0.35,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    child: Row(
-                      children: [
-                        Padding(
-                          padding: EdgeInsets.only(left: screenWidth * 0.02),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Image(
-                                    image: _bookImage,
-                                    width: screenWidth * 0.06,
-                                    height: screenHeight * 0.06,
-                                  ),
-                                  SizedBox(width: screenWidth * 0.02),
-                                  const Text(
-                                    "Last Read",
-                                    style: TextStyle(
-                                      fontFamily: 'Poppins',
-                                      fontSize: 13,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              SizedBox(height: screenHeight * 0.02),
-                              Text(
-                                lr['surah_name'] ?? 'Al-Fatihah',
-                                style: const TextStyle(
-                                  fontFamily: 'Poppins',
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.white,
-                                ),
-                              ),
-                              Text(
-                                "Ayah No: ${lr['ayah_number'] ?? 1}",
-                                style: const TextStyle(
-                                  fontFamily: 'Poppins',
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w200,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              Padding(
-                                padding: EdgeInsets.only(
-                                  right: screenWidth * 0.02,
-                                  bottom: screenHeight * 0.01,
-                                ),
-                                child: Image(
-                                  image: _quranCardImage,
-                                  width: screenWidth * 0.35,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
                   ),
-                ),
-              );
-            },
-          ),
-
-          // Tab bar
-          Container(
-            padding: EdgeInsets.only(right: screenWidth * 0.03, top: 12),
-            child: TabBar(
-              controller: _tabController,
-              indicatorColor: Colors.green,
-              indicatorWeight: 4.0,
-              labelColor: Colors.green,
-              unselectedLabelColor: Colors.grey,
-              tabs: const [
-                Tab(text: 'Surah'),
-                Tab(text: 'Para'),
-                Tab(text: 'Favourites'),
-              ],
+                );
+              },
             ),
-          ),
 
-          // Tab views
-          Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: const [SurahTab(), ParahTab(), FavoritesTab()],
+            // Tab bar
+            Container(
+              padding: EdgeInsets.only(right: screenWidth * 0.03, top: 12),
+              child: TabBar(
+                controller: _tabController,
+                indicatorColor: Colors.green,
+                indicatorWeight: 4.0,
+                labelColor: Colors.green,
+                unselectedLabelColor: Colors.grey,
+                tabs: const [
+                  Tab(text: 'Surah'),
+                  Tab(text: 'Para'),
+                  Tab(text: 'Favourites'),
+                ],
+              ),
             ),
-          ),
-        ],
+
+            // Tab views
+            Expanded(
+              child: TabBarView(
+                controller: _tabController,
+                children: const [SurahTab(), ParahTab(), FavoritesTab()],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -325,125 +553,564 @@ class _SurahTabState extends State<SurahTab>
   // copy of lists are intentionally const / final to prevent recreation
   // Use the same surahs list as in original app; trimmed here for brevity in example
   // In the real app, keep the full list.
-  final List<Map<String, String>> surahs = [
-    {"name": "Al-Fatihah", "arabic": "الفَاتِحَة", "origin": "Meccan", "verses": "7"},
-    {"name": "Al-Baqarah", "arabic": "البَقَرَة", "origin": "Medinan", "verses": "286"},
-    {"name": "Aal-E-Imran", "arabic": "آلِ عِمرَان", "origin": "Medinan", "verses": "200"},
-    {"name": "An-Nisa", "arabic": "النِّسَاء", "origin": "Medinan", "verses": "176"},
-    {"name": "Al-Maidah", "arabic": "المَائدة", "origin": "Medinan", "verses": "120"},
-    {"name": "Al-An'am", "arabic": "الأنعَام", "origin": "Meccan", "verses": "165"},
-    {"name": "Al-A'raf", "arabic": "الأعرَاف", "origin": "Meccan", "verses": "206"},
-    {"name": "Al-Anfal", "arabic": "الأنفَال", "origin": "Medinan", "verses": "75"},
-    {"name": "At-Tawbah", "arabic": "التوبَة", "origin": "Medinan", "verses": "129"},
+  static final List<Map<String, String>> surahs = [
+    {
+      "name": "Al-Fatihah",
+      "arabic": "الفَاتِحَة",
+      "origin": "Meccan",
+      "verses": "7",
+    },
+    {
+      "name": "Al-Baqarah",
+      "arabic": "البَقَرَة",
+      "origin": "Medinan",
+      "verses": "286",
+    },
+    {
+      "name": "Aal-E-Imran",
+      "arabic": "آلِ عِمرَان",
+      "origin": "Medinan",
+      "verses": "200",
+    },
+    {
+      "name": "An-Nisa",
+      "arabic": "النِّسَاء",
+      "origin": "Medinan",
+      "verses": "176",
+    },
+    {
+      "name": "Al-Maidah",
+      "arabic": "المَائدة",
+      "origin": "Medinan",
+      "verses": "120",
+    },
+    {
+      "name": "Al-An'am",
+      "arabic": "الأنعَام",
+      "origin": "Meccan",
+      "verses": "165",
+    },
+    {
+      "name": "Al-A'raf",
+      "arabic": "الأعرَاف",
+      "origin": "Meccan",
+      "verses": "206",
+    },
+    {
+      "name": "Al-Anfal",
+      "arabic": "الأنفَال",
+      "origin": "Medinan",
+      "verses": "75",
+    },
+    {
+      "name": "At-Tawbah",
+      "arabic": "التوبَة",
+      "origin": "Medinan",
+      "verses": "129",
+    },
     {"name": "Yunus", "arabic": "يُونس", "origin": "Meccan", "verses": "109"},
     {"name": "Hud", "arabic": "هُود", "origin": "Meccan", "verses": "123"},
     {"name": "Yusuf", "arabic": "يُوسُف", "origin": "Meccan", "verses": "111"},
-    {"name": "Ar-Ra'd", "arabic": "الرَّعْد", "origin": "Medinan", "verses": "43"},
-    {"name": "Ibrahim", "arabic": "إبراهِيم", "origin": "Meccan", "verses": "52"},
-    {"name": "Al-Hijr", "arabic": "الحِجْر", "origin": "Meccan", "verses": "99"},
-    {"name": "An-Nahl", "arabic": "النَّحل", "origin": "Meccan", "verses": "128"},
-    {"name": "Al-Isra", "arabic": "الإسرَاء", "origin": "Meccan", "verses": "111"},
-    {"name": "Al-Kahf", "arabic": "الكهْف", "origin": "Meccan", "verses": "110"},
+    {
+      "name": "Ar-Ra'd",
+      "arabic": "الرَّعْد",
+      "origin": "Medinan",
+      "verses": "43",
+    },
+    {
+      "name": "Ibrahim",
+      "arabic": "إبراهِيم",
+      "origin": "Meccan",
+      "verses": "52",
+    },
+    {
+      "name": "Al-Hijr",
+      "arabic": "الحِجْر",
+      "origin": "Meccan",
+      "verses": "99",
+    },
+    {
+      "name": "An-Nahl",
+      "arabic": "النَّحل",
+      "origin": "Meccan",
+      "verses": "128",
+    },
+    {
+      "name": "Al-Isra",
+      "arabic": "الإسرَاء",
+      "origin": "Meccan",
+      "verses": "111",
+    },
+    {
+      "name": "Al-Kahf",
+      "arabic": "الكهْف",
+      "origin": "Meccan",
+      "verses": "110",
+    },
     {"name": "Maryam", "arabic": "مَريَم", "origin": "Meccan", "verses": "98"},
     {"name": "Ta-Ha", "arabic": "طه", "origin": "Meccan", "verses": "135"},
-    {"name": "Al-Anbiya", "arabic": "الأنبِيَاء", "origin": "Meccan", "verses": "112"},
-    {"name": "Al-Hajj", "arabic": "الحَجّ", "origin": "Medinan", "verses": "78"},
-    {"name": "Al-Mu'minun", "arabic": "المؤمنون", "origin": "Meccan", "verses": "118"},
-    {"name": "An-Nur", "arabic": "النُّور", "origin": "Medinan", "verses": "64"},
-    {"name": "Al-Furqan", "arabic": "الفُرقان", "origin": "Meccan", "verses": "77"},
-    {"name": "Ash-Shu'ara", "arabic": "الشُّعَرَاء", "origin": "Meccan", "verses": "227"},
-    {"name": "An-Naml", "arabic": "النَّمْل", "origin": "Meccan", "verses": "93"},
-    {"name": "Al-Qasas", "arabic": "القَصَص", "origin": "Meccan", "verses": "88"},
-    {"name": "Al-Ankabut", "arabic": "العَنكبُوت", "origin": "Meccan", "verses": "69"},
+    {
+      "name": "Al-Anbiya",
+      "arabic": "الأنبِيَاء",
+      "origin": "Meccan",
+      "verses": "112",
+    },
+    {
+      "name": "Al-Hajj",
+      "arabic": "الحَجّ",
+      "origin": "Medinan",
+      "verses": "78",
+    },
+    {
+      "name": "Al-Mu'minun",
+      "arabic": "المؤمنون",
+      "origin": "Meccan",
+      "verses": "118",
+    },
+    {
+      "name": "An-Nur",
+      "arabic": "النُّور",
+      "origin": "Medinan",
+      "verses": "64",
+    },
+    {
+      "name": "Al-Furqan",
+      "arabic": "الفُرقان",
+      "origin": "Meccan",
+      "verses": "77",
+    },
+    {
+      "name": "Ash-Shu'ara",
+      "arabic": "الشُّعَرَاء",
+      "origin": "Meccan",
+      "verses": "227",
+    },
+    {
+      "name": "An-Naml",
+      "arabic": "النَّمْل",
+      "origin": "Meccan",
+      "verses": "93",
+    },
+    {
+      "name": "Al-Qasas",
+      "arabic": "القَصَص",
+      "origin": "Meccan",
+      "verses": "88",
+    },
+    {
+      "name": "Al-Ankabut",
+      "arabic": "العَنكبُوت",
+      "origin": "Meccan",
+      "verses": "69",
+    },
     {"name": "Ar-Rum", "arabic": "الرُّوم", "origin": "Meccan", "verses": "60"},
     {"name": "Luqman", "arabic": "لقمَان", "origin": "Meccan", "verses": "34"},
-    {"name": "As-Sajda", "arabic": "السَّجدَة", "origin": "Meccan", "verses": "30"},
-    {"name": "Al-Ahzab", "arabic": "الأحزَاب", "origin": "Medinan", "verses": "73"},
+    {
+      "name": "As-Sajda",
+      "arabic": "السَّجدَة",
+      "origin": "Meccan",
+      "verses": "30",
+    },
+    {
+      "name": "Al-Ahzab",
+      "arabic": "الأحزَاب",
+      "origin": "Medinan",
+      "verses": "73",
+    },
     {"name": "Saba", "arabic": "سَبَأ", "origin": "Meccan", "verses": "54"},
     {"name": "Fatir", "arabic": "فَاطِر", "origin": "Meccan", "verses": "45"},
     {"name": "Ya-Sin", "arabic": "يس", "origin": "Meccan", "verses": "83"},
-    {"name": "As-Saffat", "arabic": "الصَّافات", "origin": "Meccan", "verses": "182"},
+    {
+      "name": "As-Saffat",
+      "arabic": "الصَّافات",
+      "origin": "Meccan",
+      "verses": "182",
+    },
     {"name": "Sad", "arabic": "ص", "origin": "Meccan", "verses": "88"},
-    {"name": "Az-Zumar", "arabic": "الزُّمَر", "origin": "Meccan", "verses": "75"},
+    {
+      "name": "Az-Zumar",
+      "arabic": "الزُّمَر",
+      "origin": "Meccan",
+      "verses": "75",
+    },
     {"name": "Ghafir", "arabic": "غَافِر", "origin": "Meccan", "verses": "85"},
-    {"name": "Fussilat", "arabic": "فُصِّلَتْ", "origin": "Meccan", "verses": "54"},
-    {"name": "Ash-Shura", "arabic": "الشُّورى", "origin": "Meccan", "verses": "53"},
-    {"name": "Az-Zukhruf", "arabic": "الزُّخْرُف", "origin": "Meccan", "verses": "89"},
-    {"name": "Ad-Dukhan", "arabic": "الدُّخَان", "origin": "Meccan", "verses": "59"},
-    {"name": "Al-Jathiya", "arabic": "الجَاثِيَة", "origin": "Meccan", "verses": "37"},
-    {"name": "Al-Ahqaf", "arabic": "الأحقاف", "origin": "Meccan", "verses": "35"},
-    {"name": "Muhammad", "arabic": "مُحَمَّد", "origin": "Medinan", "verses": "38"},
-    {"name": "Al-Fath", "arabic": "الفَتْح", "origin": "Medinan", "verses": "29"},
-    {"name": "Al-Hujurat", "arabic": "الحُجُرَات", "origin": "Medinan", "verses": "18"},
+    {
+      "name": "Fussilat",
+      "arabic": "فُصِّلَتْ",
+      "origin": "Meccan",
+      "verses": "54",
+    },
+    {
+      "name": "Ash-Shura",
+      "arabic": "الشُّورى",
+      "origin": "Meccan",
+      "verses": "53",
+    },
+    {
+      "name": "Az-Zukhruf",
+      "arabic": "الزُّخْرُف",
+      "origin": "Meccan",
+      "verses": "89",
+    },
+    {
+      "name": "Ad-Dukhan",
+      "arabic": "الدُّخَان",
+      "origin": "Meccan",
+      "verses": "59",
+    },
+    {
+      "name": "Al-Jathiya",
+      "arabic": "الجَاثِيَة",
+      "origin": "Meccan",
+      "verses": "37",
+    },
+    {
+      "name": "Al-Ahqaf",
+      "arabic": "الأحقاف",
+      "origin": "Meccan",
+      "verses": "35",
+    },
+    {
+      "name": "Muhammad",
+      "arabic": "مُحَمَّد",
+      "origin": "Medinan",
+      "verses": "38",
+    },
+    {
+      "name": "Al-Fath",
+      "arabic": "الفَتْح",
+      "origin": "Medinan",
+      "verses": "29",
+    },
+    {
+      "name": "Al-Hujurat",
+      "arabic": "الحُجُرَات",
+      "origin": "Medinan",
+      "verses": "18",
+    },
     {"name": "Qaf", "arabic": "ق", "origin": "Meccan", "verses": "45"},
-    {"name": "Adh-Dhariyat", "arabic": "الذَّاريَات", "origin": "Meccan", "verses": "60"},
+    {
+      "name": "Adh-Dhariyat",
+      "arabic": "الذَّاريَات",
+      "origin": "Meccan",
+      "verses": "60",
+    },
     {"name": "At-Tur", "arabic": "الطُّور", "origin": "Meccan", "verses": "49"},
-    {"name": "An-Najm", "arabic": "النَّجْم", "origin": "Meccan", "verses": "62"},
-    {"name": "Al-Qamar", "arabic": "القَمَر", "origin": "Meccan", "verses": "55"},
-    {"name": "Ar-Rahman", "arabic": "الرَّحمٰن", "origin": "Medinan", "verses": "78"},
-    {"name": "Al-Waqia", "arabic": "الوَاقِعَة", "origin": "Meccan", "verses": "96"},
-    {"name": "Al-Hadid", "arabic": "الحَديد", "origin": "Medinan", "verses": "29"},
-    {"name": "Al-Mujadila", "arabic": "المُجَادلَة", "origin": "Medinan", "verses": "22"},
-    {"name": "Al-Hashr", "arabic": "الحَشر", "origin": "Medinan", "verses": "24"},
-    {"name": "Al-Mumtahina", "arabic": "المُمتَحنَة", "origin": "Medinan", "verses": "13"},
-    {"name": "As-Saff", "arabic": "الصَّفّ", "origin": "Medinan", "verses": "14"},
-    {"name": "Al-Jumua", "arabic": "الجُمُعَة", "origin": "Medinan", "verses": "11"},
-    {"name": "Al-Munafiqun", "arabic": "المُنَافِقون", "origin": "Medinan", "verses": "11"},
-    {"name": "At-Taghabun", "arabic": "التغَابُن", "origin": "Medinan", "verses": "18"},
-    {"name": "At-Talaq", "arabic": "الطَّلَاق", "origin": "Medinan", "verses": "12"},
-    {"name": "At-Tahrim", "arabic": "التَّحرِيم", "origin": "Medinan", "verses": "12"},
+    {
+      "name": "An-Najm",
+      "arabic": "النَّجْم",
+      "origin": "Meccan",
+      "verses": "62",
+    },
+    {
+      "name": "Al-Qamar",
+      "arabic": "القَمَر",
+      "origin": "Meccan",
+      "verses": "55",
+    },
+    {
+      "name": "Ar-Rahman",
+      "arabic": "الرَّحمٰن",
+      "origin": "Medinan",
+      "verses": "78",
+    },
+    {
+      "name": "Al-Waqia",
+      "arabic": "الوَاقِعَة",
+      "origin": "Meccan",
+      "verses": "96",
+    },
+    {
+      "name": "Al-Hadid",
+      "arabic": "الحَديد",
+      "origin": "Medinan",
+      "verses": "29",
+    },
+    {
+      "name": "Al-Mujadila",
+      "arabic": "المُجَادلَة",
+      "origin": "Medinan",
+      "verses": "22",
+    },
+    {
+      "name": "Al-Hashr",
+      "arabic": "الحَشر",
+      "origin": "Medinan",
+      "verses": "24",
+    },
+    {
+      "name": "Al-Mumtahina",
+      "arabic": "المُمتَحنَة",
+      "origin": "Medinan",
+      "verses": "13",
+    },
+    {
+      "name": "As-Saff",
+      "arabic": "الصَّفّ",
+      "origin": "Medinan",
+      "verses": "14",
+    },
+    {
+      "name": "Al-Jumua",
+      "arabic": "الجُمُعَة",
+      "origin": "Medinan",
+      "verses": "11",
+    },
+    {
+      "name": "Al-Munafiqun",
+      "arabic": "المُنَافِقون",
+      "origin": "Medinan",
+      "verses": "11",
+    },
+    {
+      "name": "At-Taghabun",
+      "arabic": "التغَابُن",
+      "origin": "Medinan",
+      "verses": "18",
+    },
+    {
+      "name": "At-Talaq",
+      "arabic": "الطَّلَاق",
+      "origin": "Medinan",
+      "verses": "12",
+    },
+    {
+      "name": "At-Tahrim",
+      "arabic": "التَّحرِيم",
+      "origin": "Medinan",
+      "verses": "12",
+    },
     {"name": "Al-Mulk", "arabic": "المُلك", "origin": "Meccan", "verses": "30"},
-    {"name": "Al-Qalam", "arabic": "القَلَم", "origin": "Meccan", "verses": "52"},
-    {"name": "Al-Haqqa", "arabic": "الحَاقَّة", "origin": "Meccan", "verses": "52"},
-    {"name": "Al-Ma'arij", "arabic": "المَعَارِج", "origin": "Meccan", "verses": "44"},
+    {
+      "name": "Al-Qalam",
+      "arabic": "القَلَم",
+      "origin": "Meccan",
+      "verses": "52",
+    },
+    {
+      "name": "Al-Haqqa",
+      "arabic": "الحَاقَّة",
+      "origin": "Meccan",
+      "verses": "52",
+    },
+    {
+      "name": "Al-Ma'arij",
+      "arabic": "المَعَارِج",
+      "origin": "Meccan",
+      "verses": "44",
+    },
     {"name": "Nuh", "arabic": "نُوح", "origin": "Meccan", "verses": "28"},
     {"name": "Al-Jinn", "arabic": "الجِنّ", "origin": "Meccan", "verses": "28"},
-    {"name": "Al-Muzzammil", "arabic": "المُزَّمِّل", "origin": "Meccan", "verses": "20"},
-    {"name": "Al-Muddaththir", "arabic": "المُدَّثِّر", "origin": "Meccan", "verses": "56"},
-    {"name": "Al-Qiyama", "arabic": "القِيَامَة", "origin": "Meccan", "verses": "40"},
-    {"name": "Al-Insan", "arabic": "الإنسَان", "origin": "Medinan", "verses": "31"},
-    {"name": "Al-Mursalat", "arabic": "المُرسَلَات", "origin": "Meccan", "verses": "50"},
-    {"name": "An-Naba", "arabic": "النَّبَأ", "origin": "Meccan", "verses": "40"},
-    {"name": "An-Nazi'at", "arabic": "النَّازعَات", "origin": "Meccan", "verses": "46"},
+    {
+      "name": "Al-Muzzammil",
+      "arabic": "المُزَّمِّل",
+      "origin": "Meccan",
+      "verses": "20",
+    },
+    {
+      "name": "Al-Muddaththir",
+      "arabic": "المُدَّثِّر",
+      "origin": "Meccan",
+      "verses": "56",
+    },
+    {
+      "name": "Al-Qiyama",
+      "arabic": "القِيَامَة",
+      "origin": "Meccan",
+      "verses": "40",
+    },
+    {
+      "name": "Al-Insan",
+      "arabic": "الإنسَان",
+      "origin": "Medinan",
+      "verses": "31",
+    },
+    {
+      "name": "Al-Mursalat",
+      "arabic": "المُرسَلَات",
+      "origin": "Meccan",
+      "verses": "50",
+    },
+    {
+      "name": "An-Naba",
+      "arabic": "النَّبَأ",
+      "origin": "Meccan",
+      "verses": "40",
+    },
+    {
+      "name": "An-Nazi'at",
+      "arabic": "النَّازعَات",
+      "origin": "Meccan",
+      "verses": "46",
+    },
     {"name": "Abasa", "arabic": "عَبَس", "origin": "Meccan", "verses": "42"},
-    {"name": "At-Takwir", "arabic": "التَّكْوِير", "origin": "Meccan", "verses": "29"},
-    {"name": "Al-Infitar", "arabic": "الانفِطَار", "origin": "Meccan", "verses": "19"},
-    {"name": "Al-Mutaffifin", "arabic": "المُطَفِّفِين", "origin": "Meccan", "verses": "36"},
-    {"name": "Al-Inshiqaq", "arabic": "الانشِقَاق", "origin": "Meccan", "verses": "25"},
-    {"name": "Al-Buruj", "arabic": "البُرُوج", "origin": "Meccan", "verses": "22"},
-    {"name": "At-Tariq", "arabic": "الطَّارِق", "origin": "Meccan", "verses": "17"},
-    {"name": "Al-A'la", "arabic": "الأعلَى", "origin": "Meccan", "verses": "19"},
-    {"name": "Al-Ghashiya", "arabic": "الغَاشِيَة", "origin": "Meccan", "verses": "26"},
+    {
+      "name": "At-Takwir",
+      "arabic": "التَّكْوِير",
+      "origin": "Meccan",
+      "verses": "29",
+    },
+    {
+      "name": "Al-Infitar",
+      "arabic": "الانفِطَار",
+      "origin": "Meccan",
+      "verses": "19",
+    },
+    {
+      "name": "Al-Mutaffifin",
+      "arabic": "المُطَفِّفِين",
+      "origin": "Meccan",
+      "verses": "36",
+    },
+    {
+      "name": "Al-Inshiqaq",
+      "arabic": "الانشِقَاق",
+      "origin": "Meccan",
+      "verses": "25",
+    },
+    {
+      "name": "Al-Buruj",
+      "arabic": "البُرُوج",
+      "origin": "Meccan",
+      "verses": "22",
+    },
+    {
+      "name": "At-Tariq",
+      "arabic": "الطَّارِق",
+      "origin": "Meccan",
+      "verses": "17",
+    },
+    {
+      "name": "Al-A'la",
+      "arabic": "الأعلَى",
+      "origin": "Meccan",
+      "verses": "19",
+    },
+    {
+      "name": "Al-Ghashiya",
+      "arabic": "الغَاشِيَة",
+      "origin": "Meccan",
+      "verses": "26",
+    },
     {"name": "Al-Fajr", "arabic": "الفَجر", "origin": "Meccan", "verses": "30"},
-    {"name": "Al-Balad", "arabic": "البَلَد", "origin": "Meccan", "verses": "20"},
-    {"name": "Ash-Shams", "arabic": "الشَّمْس", "origin": "Meccan", "verses": "15"},
-    {"name": "Al-Lail", "arabic": "اللَّيل", "origin": "Meccan", "verses": "21"},
-    {"name": "Ad-Duhaa", "arabic": "الضُّحَى", "origin": "Meccan", "verses": "11"},
-    {"name": "Ash-Sharh", "arabic": "الشَّرْح", "origin": "Meccan", "verses": "8"},
+    {
+      "name": "Al-Balad",
+      "arabic": "البَلَد",
+      "origin": "Meccan",
+      "verses": "20",
+    },
+    {
+      "name": "Ash-Shams",
+      "arabic": "الشَّمْس",
+      "origin": "Meccan",
+      "verses": "15",
+    },
+    {
+      "name": "Al-Lail",
+      "arabic": "اللَّيل",
+      "origin": "Meccan",
+      "verses": "21",
+    },
+    {
+      "name": "Ad-Duhaa",
+      "arabic": "الضُّحَى",
+      "origin": "Meccan",
+      "verses": "11",
+    },
+    {
+      "name": "Ash-Sharh",
+      "arabic": "الشَّرْح",
+      "origin": "Meccan",
+      "verses": "8",
+    },
     {"name": "At-Tin", "arabic": "التِّين", "origin": "Meccan", "verses": "8"},
     {"name": "Al-Alaq", "arabic": "العَلق", "origin": "Meccan", "verses": "19"},
     {"name": "Al-Qadr", "arabic": "القَدر", "origin": "Meccan", "verses": "5"},
-    {"name": "Al-Bayyina", "arabic": "البَيِّنَة", "origin": "Medinan", "verses": "8"},
-    {"name": "Az-Zalzala", "arabic": "الزَّلزَلة", "origin": "Medinan", "verses": "8"},
-    {"name": "Al-Adiyat", "arabic": "العَادِيَات", "origin": "Meccan", "verses": "11"},
-    {"name": "Al-Qaria", "arabic": "القَارِعَة", "origin": "Meccan", "verses": "11"},
-    {"name": "At-Takathur", "arabic": "التَّكَاثُر", "origin": "Meccan", "verses": "8"},
+    {
+      "name": "Al-Bayyina",
+      "arabic": "البَيِّنَة",
+      "origin": "Medinan",
+      "verses": "8",
+    },
+    {
+      "name": "Az-Zalzala",
+      "arabic": "الزَّلزَلة",
+      "origin": "Medinan",
+      "verses": "8",
+    },
+    {
+      "name": "Al-Adiyat",
+      "arabic": "العَادِيَات",
+      "origin": "Meccan",
+      "verses": "11",
+    },
+    {
+      "name": "Al-Qaria",
+      "arabic": "القَارِعَة",
+      "origin": "Meccan",
+      "verses": "11",
+    },
+    {
+      "name": "At-Takathur",
+      "arabic": "التَّكَاثُر",
+      "origin": "Meccan",
+      "verses": "8",
+    },
     {"name": "Al-Asr", "arabic": "العَصر", "origin": "Meccan", "verses": "3"},
-    {"name": "Al-Humaza", "arabic": "الهُمَزَة", "origin": "Meccan", "verses": "9"},
+    {
+      "name": "Al-Humaza",
+      "arabic": "الهُمَزَة",
+      "origin": "Meccan",
+      "verses": "9",
+    },
     {"name": "Al-Fil", "arabic": "الفِيل", "origin": "Meccan", "verses": "5"},
     {"name": "Quraish", "arabic": "قُرَيش", "origin": "Meccan", "verses": "4"},
-    {"name": "Al-Ma'un", "arabic": "المَاعُون", "origin": "Meccan", "verses": "7"},
-    {"name": "Al-Kawthar", "arabic": "الكَوثَر", "origin": "Meccan", "verses": "3"},
-    {"name": "Al-Kafiroon", "arabic": "الكَافِرُون", "origin": "Meccan", "verses": "6"},
-    {"name": "An-Nasr", "arabic": "النَّصر", "origin": "Medinan", "verses": "3"},
-    {"name": "Al-Masad", "arabic": "المَسَد", "origin": "Meccan", "verses": "5"},
-    {"name": "Al-Ikhlas", "arabic": "الإخْلَاص", "origin": "Meccan", "verses": "4"},
-    {"name": "Al-Falaq", "arabic": "الفَلَق", "origin": "Meccan", "verses": "5"},
+    {
+      "name": "Al-Ma'un",
+      "arabic": "المَاعُون",
+      "origin": "Meccan",
+      "verses": "7",
+    },
+    {
+      "name": "Al-Kawthar",
+      "arabic": "الكَوثَر",
+      "origin": "Meccan",
+      "verses": "3",
+    },
+    {
+      "name": "Al-Kafiroon",
+      "arabic": "الكَافِرُون",
+      "origin": "Meccan",
+      "verses": "6",
+    },
+    {
+      "name": "An-Nasr",
+      "arabic": "النَّصر",
+      "origin": "Medinan",
+      "verses": "3",
+    },
+    {
+      "name": "Al-Masad",
+      "arabic": "المَسَد",
+      "origin": "Meccan",
+      "verses": "5",
+    },
+    {
+      "name": "Al-Ikhlas",
+      "arabic": "الإخْلَاص",
+      "origin": "Meccan",
+      "verses": "4",
+    },
+    {
+      "name": "Al-Falaq",
+      "arabic": "الفَلَق",
+      "origin": "Meccan",
+      "verses": "5",
+    },
     {"name": "An-Nas", "arabic": "النَّاس", "origin": "Meccan", "verses": "6"},
   ];
 
-
-@override
+  @override
   Widget build(BuildContext context) {
     super.build(context); // required by AutomaticKeepAliveClientMixin
     final screenWidth = MediaQuery.of(context).size.width;
@@ -525,159 +1192,38 @@ class ParahTab extends StatefulWidget {
 }
 
 class _ParahTabState extends State<ParahTab>
-    with AutomaticKeepAliveClientMixin {
-  final List<Map<String, String>> parahs = [
-    {
-      "arabic": "الٓمِٓ",
-      "verses": "148",
-      "english": "Alif Lam Meem"
-    },
-    {
-      "arabic": "سَيَقُولُ",
-      "verses": "111",
-      "english": "Sayaqool"
-    },
-    {
-      "arabic": "تِلْكَ الرُّسُلُ",
-      "verses": "126",
-      "english": "Tilkal Rusulu"
-    },
-    {
-      "arabic": "لَنْ تَنَالُوا الْبِرَّ",
-      "verses": "131",
-      "english": "Lan Tana loo Al-Birra"
-    },
-    {
-      "arabic": "وَالْمُحْصَنَاتُ",
-      "verses": "124",
-      "english": "Wal Mohsanat"
-    },
-    {
-      "arabic": "لَا يُحِبُّ اللَّهُ",
-      "verses": "110",
-      "english": "La Yuhibbullah"
-    },
-    {
-      "arabic": "وَإِذَا سَمِعُوا",
-      "verses": "149",
-      "english": "Wa Iza Samiu"
-    },
-    {
-      "arabic": "وَلَوْ أَنَّنَا",
-      "verses": "142",
-      "english": "Wa Lau Annana"
-    },
-    {
-      "arabic": "قَالَلْمَلَأُ",
-      "verses": "159",
-      "english": "Qalal Malao"
-    },
-    {
-      "arabic": "وَاعْلَمُوا",
-      "verses": "127",
-      "english": "Wa A'lamu"
-    },
-    {
-      "arabic": "يَعْتَذِرُونَ",
-      "verses": "151",
-      "english": "Yatazeroon"
-    },
-    {
-      "arabic": "وَمَا مِن دَآبَّةٍ",
-      "verses": "170",
-      "english": "Wa Mamin Daabat"
-    },
-    {
-      "arabic": "وَمَا أُبَرِّئُ",
-      "verses": "154",
-      "english": "Wa Ma Ubrioo"
-    },
-    {
-      "arabic": "رُبَمَا",
-      "verses": "227",
-      "english": "Rubama"
-    },
-    {
-      "arabic": "سُبْحَانَ الَّذِي",
-      "verses": "185",
-      "english": "Subhan Alladhi"
-    },
-    {
-      "arabic": "قَالَ أَلَمْ",
-      "verses": "269",
-      "english": "Qala Alam"
-    },
-    {
-      "arabic": "اقْتَرَبَ لِلْنَّاسِ",
-      "verses": "190",
-      "english": "Iqtaraba Lin-Nasi"
-    },
-    {
-      "arabic": "قَدْ أَفْلَحَ",
-      "verses": "202",
-      "english": "Qadd Aflaha"
-    },
-    {
-      "arabic": "وَقَالَ الَّذِينَ",
-      "verses": "339",
-      "english": "Wa Qalallazina"
-    },
-    {
-      "arabic": "أَمَّنْ خَلَقَ",
-      "verses": "171",
-      "english": "A’man Khalaq"
-    },
-    {
-      "arabic": "أُتْلُ مَاأُوْحِيَ",
-      "verses": "178",
-      "english": "Utlu Ma Oohi"
-    },
-    {
-      "arabic": "وَمَنْ يَّقْنُتْ",
-      "verses": "169",
-      "english": "Wa Man Yaqnut"
-    },
-    {
-      "arabic": "وَمَآ لِيَ",
-      "verses": "357",
-      "english": "Wa Mali"
-    },
-    {
-      "arabic": "فَمَنْ أَظْلَمُ",
-      "verses": "175",
-      "english": "Faman Azlamu"
-    },
-    {
-      "arabic": "إِلَيْهِ يُرَدُّ",
-      "verses": "246",
-      "english": "Ilayhi Yuruddo"
-    },
-    {
-      "arabic": "حَــــم",
-      "verses": "195",
-      "english": "Ha Meem"
-    },
-    {
-      "arabic": "قَالَ فَمَا خَطْبُكُم",
-      "verses": "399",
-      "english": "Qala Fama Khatbukum"
-    },
-    {
-      "arabic": "قَدْ سَمِعَ اللَّهُ",
-      "verses": "137",
-      "english": "Qadd Sami Allah"
-    },
-    {
-      "arabic": "تَبَارَكَ الَّذِي",
-      "verses": "431",
-      "english": "Tabarakallazi"
-    },
-    {
-      "arabic": "عَمَّ يَتَسَاءَلُونَ",
-      "verses": "564",
-      "english": "Amma Yatasa’aloon"
-    },
-  ];
+    with AutomaticKeepAliveClientMixin {static final List<Map<String, String>> parahs = [
+  {"name": "Alif Lam Meem", "arabic": "الٓمِٓ", "verses": "148", "english": "Alif Lam Meem"},
+  {"name": "Sayaqool", "arabic": "سَيَقُولُ", "verses": "111", "english": "Sayaqool"},
+  {"name": "Tilkal Rusulu", "arabic": "تِلْكَ الرُّسُلُ", "verses": "126", "english": "Tilkal Rusulu"},
+  {"name": "Lan Tana loo Al-Birra", "arabic": "لَنْ تَنَالُوا الْبِرَّ", "verses": "131", "english": "Lan Tana loo Al-Birra"},
+  {"name": "Wal Mohsanat", "arabic": "وَالْمُحْصَنَاتُ", "verses": "124", "english": "Wal Mohsanat"},
+  {"name": "La Yuhibbullah", "arabic": "لَا يُحِبُّ اللَّهُ", "verses": "110", "english": "La Yuhibbullah"},
+  {"name": "Wa Iza Samiu", "arabic": "وَإِذَا سَمِعُوا", "verses": "149", "english": "Wa Iza Samiu"},
+  {"name": "Wa Lau Annana", "arabic": "وَلَوْ أَنَّنَا", "verses": "142", "english": "Wa Lau Annana"},
+  {"name": "Qalal Malao", "arabic": "قَالَلْمَلَأُ", "verses": "159", "english": "Qalal Malao"},
+  {"name": "Wa A'lamu", "arabic": "وَاعْلَمُوا", "verses": "127", "english": "Wa A'lamu"},
+  {"name": "Yatazeroon", "arabic": "يَعْتَذِرُونَ", "verses": "151", "english": "Yatazeroon"},
+  {"name": "Wa Mamin Daabat", "arabic": "وَمَا مِن دَآبَّةٍ", "verses": "170", "english": "Wa Mamin Daabat"},
+  {"name": "Wa Ma Ubrioo", "arabic": "وَمَا أُبَرِّئُ", "verses": "154", "english": "Wa Ma Ubrioo"},
+  {"name": "Rubama", "arabic": "رُبَمَا", "verses": "227", "english": "Rubama"},
+  {"name": "Subhan Alladhi", "arabic": "سُبْحَانَ الَّذِي", "verses": "185", "english": "Subhan Alladhi"},
+  {"name": "Qala Alam", "arabic": "قَالَ أَلَمْ", "verses": "269", "english": "Qala Alam"},
+  {"name": "Iqtaraba Lin-Nasi", "arabic": "اقْتَرَبَ لِلْنَّاسِ", "verses": "190", "english": "Iqtaraba Lin-Nasi"},
+  {"name": "Qadd Aflaha", "arabic": "قَدْ أَفْلَحَ", "verses": "202", "english": "Qadd Aflaha"},
+  {"name": "Wa Qalallazina", "arabic": "وَقَالَ الَّذِينَ", "verses": "339", "english": "Wa Qalallazina"},
+  {"name": "A'man Khalaq", "arabic": "أَمَّنْ خَلَقَ", "verses": "171", "english": "A'man Khalaq"},
+  {"name": "Utlu Ma Oohi", "arabic": "أُتْلُ مَاأُوْحِيَ", "verses": "178", "english": "Utlu Ma Oohi"},
+  {"name": "Wa Man Yaqnut", "arabic": "وَمَنْ يَّقْنُتْ", "verses": "169", "english": "Wa Man Yaqnut"},
+  {"name": "Wa Mali", "arabic": "وَمَآ لِيَ", "verses": "357", "english": "Wa Mali"},
+  {"name": "Faman Azlamu", "arabic": "فَمَنْ أَظْلَمُ", "verses": "175", "english": "Faman Azlamu"},
+  {"name": "Ilayhi Yuruddo", "arabic": "إِلَيْهِ يُرَدُّ", "verses": "246", "english": "Ilayhi Yuruddo"},
+  {"name": "Ha Meem", "arabic": "حَــــم", "verses": "195", "english": "Ha Meem"},
+  {"name": "Qala Fama Khatbukum", "arabic": "قَالَ فَمَا خَطْبُكُم", "verses": "399", "english": "Qala Fama Khatbukum"},
+  {"name": "Qadd Sami Allah", "arabic": "قَدْ سَمِعَ اللَّهُ", "verses": "137", "english": "Qadd Sami Allah"},
+  {"name": "Tabarakallazi", "arabic": "تَبَارَكَ الَّذِي", "verses": "431", "english": "Tabarakallazi"},
+  {"name": "Amma Yatasa'aloon", "arabic": "عَمَّ يَتَسَاءَلُونَ", "verses": "564", "english": "Amma Yatasa'aloon"},
+];
 
   @override
   Widget build(BuildContext context) {
@@ -707,7 +1253,7 @@ class _ParahTabState extends State<ParahTab>
               ),
               Text(
                 '${index + 1}',
-                style:  TextStyle(
+                style: TextStyle(
                   color: Theme.of(context).colorScheme.onSurface,
                   fontWeight: FontWeight.bold,
                   fontSize: 14,
@@ -855,7 +1401,7 @@ class _FavoritesTabState extends State<FavoritesTab>
                             style: TextStyle(
                               fontFamily: 'Poppins',
                               fontSize: 14,
-                                color: Theme.of(context).colorScheme.onSurface,
+                              color: Theme.of(context).colorScheme.onSurface,
                             ),
                           ),
                         ],
