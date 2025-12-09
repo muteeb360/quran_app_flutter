@@ -303,7 +303,7 @@ class _HomeMediumScreenLayoutState extends State<HomeMediumScreenLayout> {
 
       // ADD THIS: Update background based on upcoming prayer
       final prayer = _currentPrayer.toLowerCase();
-      if (prayer.contains("fajr")) {
+      if (prayer.contains("fajr") || prayer.contains("none")) {
         _currentBackground = "assets/images/dawn.png";
       } else if (prayer.contains("dhuhr") || prayer.contains("asr")) {
         _currentBackground = "assets/images/noon.png";
@@ -432,7 +432,7 @@ class _HomeMediumScreenLayoutState extends State<HomeMediumScreenLayout> {
 
     Color getHomeTextColor() {
       final prayer = _currentPrayer.toLowerCase();
-      if (prayer.contains("fajr") || prayer.contains("maghrib") || prayer.contains("isha")) {
+      if (prayer.contains("fajr") || prayer.contains("maghrib") || prayer.contains("isha") || prayer.contains("none")) {
         return Colors.white;
       }
       return Colors.black;
