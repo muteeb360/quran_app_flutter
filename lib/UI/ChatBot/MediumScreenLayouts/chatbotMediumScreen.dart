@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:share_plus/share_plus.dart';
 import 'dart:convert';
 import 'dart:math' as math;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -475,165 +476,226 @@ class _ChatbotMediumScreenState extends State<ChatbotMediumScreen>
       }).toList(),
     );
   }
+  Future<void> _shareMessage(String text) async {
+    await Share.share(text);
+  }
+
+  void _deleteMessage(ChatMessage message) {
+    setState(() {
+      _messages.remove(message);
+    });
+    _saveChatHistory(); // Update saved chat
+  }
+
+  void _showMessageOptions(ChatMessage message) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.copy),
+                title: const Text("Copy"),
+                onTap: () {
+                  Clipboard.setData(ClipboardData(text: message.text));
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Copied")),
+                  );
+                },
+              ),
+
+              ListTile(
+                leading: const Icon(Icons.share),
+                title: const Text("Share"),
+                onTap: () async {
+                  Navigator.pop(context);
+                  await _shareMessage(message.text);
+                },
+              ),
+
+              //if (message.isUser)  // Only allow deleting user's messages (optional)
+                ListTile(
+                  leading: const Icon(Icons.delete),
+                  title: const Text("Delete"),
+                  onTap: () {
+                    _deleteMessage(message);
+                    Navigator.pop(context);
+                  },
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
   Widget _buildMessageBubble(ChatMessage message) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment:
-        message.isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
-        children: [
-          if (!message.isUser) ...[
-            Container(
-              width: 32,
-              height: 32,
-              decoration: const BoxDecoration(
-                color: Color(0xFF2E7D32),
-                shape: BoxShape.circle,
+    return GestureDetector(
+      onLongPress: () => _showMessageOptions(message),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment:
+          message.isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+          children: [
+            if (!message.isUser) ...[
+              Container(
+                width: 32,
+                height: 32,
+                decoration: const BoxDecoration(
+                  color: Color(0xFF2E7D32),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.mosque,
+                  size: 18,
+                  color: Colors.white,
+                ),
               ),
-              child: const Icon(
-                Icons.mosque,
-                size: 18,
-                color: Colors.white,
-              ),
-            ),
-            const SizedBox(width: 8),
-          ],
-          Flexible(
-            child: Column(
-              crossAxisAlignment: message.isUser
-                  ? CrossAxisAlignment.end
-                  : CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: message.isUser
-                        ? const Color(0xFF2E7D32)
-                        : Colors.white,
-                    borderRadius: BorderRadius.only(
-                      topLeft: const Radius.circular(20),
-                      topRight: const Radius.circular(20),
-                      bottomLeft: Radius.circular(message.isUser ? 20 : 4),
-                      bottomRight: Radius.circular(message.isUser ? 4 : 20),
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
+              const SizedBox(width: 8),
+            ],
+            Flexible(
+              child: Column(
+                crossAxisAlignment: message.isUser
+                    ? CrossAxisAlignment.end
+                    : CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: message.isUser
+                          ? const Color(0xFF2E7D32)
+                          : Theme.of(context).colorScheme.surfaceVariant,
+                      borderRadius: BorderRadius.only(
+                        topLeft: const Radius.circular(20),
+                        topRight: const Radius.circular(20),
+                        bottomLeft: Radius.circular(message.isUser ? 20 : 4),
+                        bottomRight: Radius.circular(message.isUser ? 4 : 20),
                       ),
-                    ],
-                  ),
-                  child: message.isUser
-                      ? Text(
-                    message.text,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 15,
-                      height: 1.4,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
                     ),
-                  )
-                      : MarkdownBody(
-                    data: message.text,
-                    styleSheet: MarkdownStyleSheet(
-                      p: const TextStyle(
-                        color: Colors.black87,
+                    child: message.isUser
+                        ? Text(
+                      message.text,
+                      style: const TextStyle(
+                        color: Colors.white,
                         fontSize: 15,
                         height: 1.4,
                       ),
-                      strong: const TextStyle(
-                        color: Color(0xFF2E7D32),
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
-                      ),
-                      em: const TextStyle(
-                        color: Colors.black87,
-                        fontStyle: FontStyle.italic,
-                        fontSize: 15,
-                      ),
-                      listBullet: const TextStyle(
-                        color: Color(0xFF2E7D32),
-                        fontSize: 15,
-                      ),
-                      h1: const TextStyle(
-                        color: Color(0xFF2E7D32),
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        height: 1.2,
-                      ),
-                      h2: const TextStyle(
-                        color: Color(0xFF2E7D32),
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        height: 1.2,
-                      ),
-                      h3: const TextStyle(
-                        color: Color(0xFF2E7D32),
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        height: 1.2,
-                      ),
-                      code: TextStyle(
-                        backgroundColor: Colors.grey[100],
-                        color: Colors.black87,
-                        fontSize: 14,
-                        fontFamily: 'monospace',
-                      ),
-                      codeblockDecoration: BoxDecoration(
-                        color: Colors.grey[100],
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      blockquote: TextStyle(
-                        color: Colors.grey[600],
-                        fontStyle: FontStyle.italic,
-                      ),
-                      blockquoteDecoration: BoxDecoration(
-                        color: Colors.grey[50],
-                        border: const Border(
-                          left: BorderSide(
-                            color: Color(0xFF2E7D32),
-                            width: 4,
+                    )
+                        : MarkdownBody(
+                      data: message.text,
+                      styleSheet: MarkdownStyleSheet(
+                        p:  TextStyle(
+                          color: Theme.of(context).colorScheme.onSurface,
+                          fontSize: 15,
+                          height: 1.4,
+                        ),
+                        strong: const TextStyle(
+                          color: Color(0xFF2E7D32),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
+                        em: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurface,
+                          fontStyle: FontStyle.italic,
+                          fontSize: 15,
+                        ),
+                        listBullet: const TextStyle(
+                          color: Color(0xFF2E7D32),
+                          fontSize: 15,
+                        ),
+                        h1: const TextStyle(
+                          color: Color(0xFF2E7D32),
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          height: 1.2,
+                        ),
+                        h2: const TextStyle(
+                          color: Color(0xFF2E7D32),
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          height: 1.2,
+                        ),
+                        h3: const TextStyle(
+                          color: Color(0xFF2E7D32),
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          height: 1.2,
+                        ),
+                        code: TextStyle(
+                          backgroundColor: Colors.grey[100],
+                          color: Colors.black87,
+                          fontSize: 14,
+                          fontFamily: 'monospace',
+                        ),
+                        codeblockDecoration: BoxDecoration(
+                          color: Colors.grey[100],
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        blockquote: TextStyle(
+                          color: Colors.grey[600],
+                          fontStyle: FontStyle.italic,
+                        ),
+                        blockquoteDecoration: BoxDecoration(
+                          color: Colors.grey[50],
+                          border: const Border(
+                            left: BorderSide(
+                              color: Color(0xFF2E7D32),
+                              width: 4,
+                            ),
                           ),
                         ),
                       ),
+                      onTapLink: (text, href, title) {
+                        if (href != null) {
+                          launchUrl(Uri.parse(href));
+                        }
+                      },
                     ),
-                    onTapLink: (text, href, title) {
-                      if (href != null) {
-                        launchUrl(Uri.parse(href));
-                      }
-                    },
                   ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  _formatTime(message.timestamp),
-                  style: TextStyle(
-                    color: Colors.grey[500],
-                    fontSize: 12,
+                  const SizedBox(height: 4),
+                  Text(
+                    _formatTime(message.timestamp),
+                    style: TextStyle(
+                      color: Colors.grey[500],
+                      fontSize: 12,
+                    ),
                   ),
-                ),
-              ],
-            ),
-          ),
-          if (message.isUser) ...[
-            const SizedBox(width: 8),
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                color: Colors.grey[300],
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.person,
-                size: 18,
-                color: Colors.grey,
+                ],
               ),
             ),
+            if (message.isUser) ...[
+              const SizedBox(width: 8),
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.person,
+                  size: 18,
+                  color: Colors.grey,
+                ),
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
@@ -722,7 +784,7 @@ class _ChatbotMediumScreenState extends State<ChatbotMediumScreen>
         bottom: 16 + MediaQuery.of(context).viewInsets.bottom,
       ),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
+        color: Theme.of(context).colorScheme.background,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
@@ -738,7 +800,7 @@ class _ChatbotMediumScreenState extends State<ChatbotMediumScreen>
             Expanded(
               child: Container(
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.background,
+                  color: Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(25),
                   border: Border.all(
                     color: const Color(0xFF2E7D32).withOpacity(0.2),

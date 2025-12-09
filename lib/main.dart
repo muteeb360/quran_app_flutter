@@ -83,7 +83,7 @@ class _hidayaState extends State<hidaya> {
       onBackground: Color(0xFF1F1F1F),     // Deep charcoal text
       surface: Color(0xFFFFFFFF),          // White cards
       onSurface: Color(0xFF2C2C2C),        // Soft black text
-      surfaceVariant: Color(0xFFE9E6D9),   // Subtle beige for inputs
+      surfaceVariant: Colors.white,   // Subtle beige for inputs
       onSurfaceVariant: Color(0xFF555555), // Secondary text
       error: Colors.red,
       onError: Colors.white,
@@ -95,7 +95,7 @@ class _hidayaState extends State<hidaya> {
       onPrimary: Colors.grey,
       secondary: Color(0xFFE0C15A),        // Softer gold for contrast
       onSecondary: Colors.black,
-      background: Color(0xFF0D0D0D),       // Deep onyx background
+      background: Color(0xFF1A1A1A),       // Deep onyx background
       onBackground: Color(0xFFEDEDED),     // Snow white text
       surface: Color(0xFF1A1A1A),          // Dark cards
       onSurface: Color(0xFFE0E0E0),        // Light grey text

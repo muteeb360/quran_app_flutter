@@ -116,7 +116,7 @@ class _QiblaDirectionMediumScreenState extends State<QiblaDirectionMediumScreen>
       List<Placemark> placemarks = await placemarkFromCoordinates(latitude, longitude);
       if (placemarks.isNotEmpty) {
         Placemark place = placemarks[0];
-        String location = '${place.locality ?? ''}, ${place.thoroughfare ?? ''}, ${place.country ?? ''}';
+        String location = '${place.locality ?? ''}, ${place.thoroughfare ?? ''} ${place.country ?? ''}';
         if (mounted) {
           setState(() => _currentLocation = location.isNotEmpty ? location : 'Unknown location');
         }
@@ -240,16 +240,6 @@ class _QiblaDirectionMediumScreenState extends State<QiblaDirectionMediumScreen>
                       color: Colors.yellow[100],
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-                if (_accuracy != null) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    'Accuracy: ${_accuracy!.round()}°',
-                    style: GoogleFonts.poppins(
-                      color: Colors.white70,
-                      fontSize: 12,
                     ),
                   ),
                 ],

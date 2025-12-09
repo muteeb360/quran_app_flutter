@@ -579,7 +579,7 @@ class AyahCard extends StatelessWidget {
         child: Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(10),
-            color: isLastRead ? Colors.green.withOpacity(0.1) : Theme.of(context).colorScheme.surface,
+            color: isLastRead ? Colors.green.withOpacity(0.1) : Theme.of(context).colorScheme.surfaceVariant,
           ),
           child: Padding(
             padding: const EdgeInsets.all(16.0),

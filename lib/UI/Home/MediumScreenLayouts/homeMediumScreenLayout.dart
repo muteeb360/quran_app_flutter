@@ -451,7 +451,7 @@ class _HomeMediumScreenLayoutState extends State<HomeMediumScreenLayout> {
             color: getHomeTextColor(),
             fontSize: 16,
             fontWeight: FontWeight.w700,
-          ),
+          )
         ),
         centerTitle: true,
         backgroundColor: Colors.transparent,
@@ -624,7 +624,7 @@ class _HomeMediumScreenLayoutState extends State<HomeMediumScreenLayout> {
                             _navigateToScreen(context, items[index]['text']);
                           },
                           child: Card(
-                            color: Theme.of(context).colorScheme.surface,
+                            color: Theme.of(context).colorScheme.surfaceVariant,
                             elevation: 4,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(16),
@@ -668,7 +668,7 @@ class _HomeMediumScreenLayoutState extends State<HomeMediumScreenLayout> {
               child: Padding(
                 padding: EdgeInsets.only(right: screenWidth*0.07,left: screenWidth*0.07,top: screenHeight*0.63),
                 child: Card(
-                  color: Theme.of(context).colorScheme.surface,
+                  color: Theme.of(context).colorScheme.surfaceVariant,
                   elevation: 0,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
