@@ -2,9 +2,9 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:flutter_compass/flutter_compass.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:compassx/compassx.dart';  // ← NEW: Simple & accurate
 
 class QiblaDirectionMediumScreen extends StatefulWidget {
   @override
@@ -12,12 +12,18 @@ class QiblaDirectionMediumScreen extends StatefulWidget {
 }
 
 class _QiblaDirectionMediumScreenState extends State<QiblaDirectionMediumScreen> {
-  double _deviceHeading = 0.0;
-  double _qiblaDirection = 0.0; // Angle to Qibla in degrees
+  double _deviceHeading = 0.0;  // True heading from fused sensors
+  double _qiblaDirection = 0.0;
   String _currentLocation = 'Fetching location...';
   String _qiblaText = 'Calculating...';
   bool _hasPermissions = false;
-  StreamSubscription<CompassEvent>? _compassSubscription; // To hold the subscription
+  bool _needsCalibration = false;
+  double? _accuracy;  // Optional: Sensor accuracy (degrees)
+  StreamSubscription<CompassXEvent>? _compassSubscription;
+
+  // Kaaba coordinates (precise)
+  static const double kaabaLat = 21.422487;
+  static const double kaabaLng = 39.826206;
 
   @override
   void initState() {
@@ -28,24 +34,19 @@ class _QiblaDirectionMediumScreenState extends State<QiblaDirectionMediumScreen>
 
   @override
   void dispose() {
-    _compassSubscription?.cancel(); // Cancel the subscription when the widget is disposed
+    _compassSubscription?.cancel();
     super.dispose();
   }
 
-  // Check location permissions and fetch the user's location
+  // Same permission/location code (unchanged)
   Future<void> _checkPermissionsAndFetchLocation() async {
-    bool serviceEnabled;
-    LocationPermission permission;
-
-    // Check if location services are enabled
-    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
       _showError('Location services are disabled.');
       return;
     }
 
-    // Check location permissions
-    permission = await Geolocator.checkPermission();
+    LocationPermission permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied) {
@@ -59,11 +60,8 @@ class _QiblaDirectionMediumScreenState extends State<QiblaDirectionMediumScreen>
       return;
     }
 
-    setState(() {
-      _hasPermissions = true;
-    });
+    setState(() => _hasPermissions = true);
 
-    // Fetch the user's location
     try {
       Position position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
@@ -75,34 +73,22 @@ class _QiblaDirectionMediumScreenState extends State<QiblaDirectionMediumScreen>
     }
   }
 
-  // Calculate the Qibla direction based on user's latitude and longitude
+  // Same Qibla calculation (unchanged, but uses precise coords)
   void _calculateQiblaDirection(double latitude, double longitude) {
-    // Kaaba coordinates (Mecca)
-    const double kaabaLat = 21.4225; // Latitude of Kaaba
-    const double kaabaLong = 39.8262; // Longitude of Kaaba
-
-    // Convert latitude and longitude to radians
     double lat1 = math.pi * latitude / 180.0;
     double long1 = math.pi * longitude / 180.0;
     double lat2 = math.pi * kaabaLat / 180.0;
-    double long2 = math.pi * kaabaLong / 180.0;
+    double long2 = math.pi * kaabaLng / 180.0;
 
-    // Calculate the difference in longitude
     double dLong = long2 - long1;
 
-    // Calculate the Qibla direction (bearing)
     double y = math.sin(dLong) * math.cos(lat2);
     double x = math.cos(lat1) * math.sin(lat2) -
         math.sin(lat1) * math.cos(lat2) * math.cos(dLong);
     double qiblaAngle = math.atan2(y, x);
 
-    // Convert back to degrees
     qiblaAngle = qiblaAngle * 180.0 / math.pi;
-
-    // Adjust the angle to be between 0 and 360
-    if (qiblaAngle < 0) {
-      qiblaAngle += 360;
-    }
+    if (qiblaAngle < 0) qiblaAngle += 360;
 
     if (mounted) {
       setState(() {
@@ -112,7 +98,7 @@ class _QiblaDirectionMediumScreenState extends State<QiblaDirectionMediumScreen>
     }
   }
 
-  // Get the direction (e.g., N, NE, E) based on the heading angle
+  // Same direction helper (unchanged)
   String _getDirection(double angle) {
     if (angle >= 337.5 || angle < 22.5) return 'N';
     if (angle >= 22.5 && angle < 67.5) return 'NE';
@@ -124,7 +110,7 @@ class _QiblaDirectionMediumScreenState extends State<QiblaDirectionMediumScreen>
     return 'NW';
   }
 
-  // Get the location name using geocoding
+  // Same location name (unchanged)
   Future<void> _getLocationName(double latitude, double longitude) async {
     try {
       List<Placemark> placemarks = await placemarkFromCoordinates(latitude, longitude);
@@ -132,27 +118,16 @@ class _QiblaDirectionMediumScreenState extends State<QiblaDirectionMediumScreen>
         Placemark place = placemarks[0];
         String location = '${place.locality ?? ''}, ${place.thoroughfare ?? ''}, ${place.country ?? ''}';
         if (mounted) {
-          setState(() {
-            _currentLocation = location.isNotEmpty ? location : 'Unknown location';
-          });
+          setState(() => _currentLocation = location.isNotEmpty ? location : 'Unknown location');
         }
       } else {
-        if (mounted) {
-          setState(() {
-            _currentLocation = 'Unknown location';
-          });
-        }
+        if (mounted) setState(() => _currentLocation = 'Unknown location');
       }
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          _currentLocation = 'Failed to fetch location name: $e';
-        });
-      }
+      if (mounted) setState(() => _currentLocation = 'Failed to fetch location name: $e');
     }
   }
 
-  // Show error messages
   void _showError(String message) {
     if (mounted) {
       setState(() {
@@ -162,22 +137,19 @@ class _QiblaDirectionMediumScreenState extends State<QiblaDirectionMediumScreen>
     }
   }
 
-  // Listen to device heading using flutter_compass
+  // NEW: Listen to compass events (simple & accurate)
   void _listenToDeviceHeading() {
-    _compassSubscription = FlutterCompass.events?.listen(
-          (CompassEvent event) {
-        if (event.heading != null) {
-          double normalizedHeading = event.heading! < 0 ? (360 + event.heading!) : event.heading!;
-          if (mounted) {
-            setState(() {
-              _deviceHeading = normalizedHeading;
-            });
-          }
+    _compassSubscription = CompassX.events?.listen(
+          (CompassXEvent event) {
+        if (event.heading != null && mounted) {
+          setState(() {
+            _deviceHeading = event.heading!;  // 0–360° true heading
+            _needsCalibration = event.shouldCalibrate ?? false;
+            _accuracy = event.accuracy;  // Optional: Use for quality indicator
+          });
         }
       },
-      onError: (e) {
-        print('Compass error: $e');
-      },
+      onError: (e) => print('Compass error: $e'),
     );
   }
 
@@ -187,13 +159,11 @@ class _QiblaDirectionMediumScreenState extends State<QiblaDirectionMediumScreen>
     final screenHeight = MediaQuery.of(context).size.height;
 
     return Scaffold(
-      extendBodyBehindAppBar: true, // Allow body to extend behind app bar
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios, color: Colors.white),
-          onPressed: () {
-            Navigator.pop(context);
-          },
+          icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           'Qibla Direction',
@@ -208,25 +178,25 @@ class _QiblaDirectionMediumScreenState extends State<QiblaDirectionMediumScreen>
         elevation: 0,
       ),
       body: Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Color(0xFF44C17B), // Light green at the top
-              Color(0xFF2E8B57), // Darker green at the bottom
+              Color(0xFF44C17B),
+              Color(0xFF2E8B57),
             ],
           ),
         ),
         child: Stack(
           children: [
-            // Bottom mosque silhouette layer
+            // Mosque silhouette (unchanged)
             Positioned(
               left: 0,
               right: 0,
               bottom: 0,
               child: Image.asset(
-                'assets/images/mosque_silhouette.png', // Add this asset (create or use an image with mosque silhouettes)
+                'assets/images/mosque_silhouette.png',
                 fit: BoxFit.cover,
                 height: screenHeight * 0.15,
               ),
@@ -234,17 +204,17 @@ class _QiblaDirectionMediumScreenState extends State<QiblaDirectionMediumScreen>
             Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Display Qibla direction
+                // Qibla text (unchanged)
                 Text(
-                  'Qibla ${_qiblaText}',
+                  'Qibla $_qiblaText',
                   style: GoogleFonts.poppins(
                     color: Colors.white,
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                SizedBox(height: 8),
-                // Display current location
+                const SizedBox(height: 8),
+                // Location (unchanged)
                 Text(
                   _currentLocation,
                   style: GoogleFonts.poppins(
@@ -252,8 +222,8 @@ class _QiblaDirectionMediumScreenState extends State<QiblaDirectionMediumScreen>
                     fontSize: 16,
                   ),
                 ),
-                SizedBox(height: 8),
-                // Display the heading in degrees
+                const SizedBox(height: 8),
+                // Heading display (now more accurate)
                 Text(
                   'Heading: ${_deviceHeading.round()}°',
                   style: GoogleFonts.poppins(
@@ -262,17 +232,40 @@ class _QiblaDirectionMediumScreenState extends State<QiblaDirectionMediumScreen>
                     fontWeight: FontWeight.w400,
                   ),
                 ),
+                if (_needsCalibration) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    'Calibrate: Move phone in figure-8',
+                    style: GoogleFonts.poppins(
+                      color: Colors.yellow[100],
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+                if (_accuracy != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    'Accuracy: ${_accuracy!.round()}°',
+                    style: GoogleFonts.poppins(
+                      color: Colors.white70,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
                 SizedBox(height: screenHeight * 0.05),
+
+                // Compass widget (math fixed for correct rotation)
                 Center(
-                  child: Container(
+                  child: SizedBox(
                     width: screenWidth * 0.8,
                     height: screenWidth * 0.8,
                     child: Stack(
                       alignment: Alignment.center,
                       children: [
-                        // Compass dial (rotates with normalized device heading, reversed direction)
+                        // Compass background (rotates opposite to device for "stable" view)
                         Transform.rotate(
-                          angle: (-_deviceHeading * math.pi / 180), // Reverse rotation for correct alignment
+                          angle: -(_deviceHeading * math.pi / 180),  // Counter-rotate device
                           child: Image.asset(
                             'assets/images/compass_background.png',
                             width: screenWidth * 0.8,
@@ -280,9 +273,9 @@ class _QiblaDirectionMediumScreenState extends State<QiblaDirectionMediumScreen>
                             fit: BoxFit.cover,
                           ),
                         ),
-                        // Compass needle (points to Qibla)
+                        // Needle: Points to Qibla (relative to heading)
                         Transform.rotate(
-                          angle: (-(_deviceHeading + _qiblaDirection) * math.pi / 180), // Adjust needle to Qibla
+                          angle: ((-_deviceHeading + _qiblaDirection) * math.pi / 180),
                           child: Image.asset(
                             'assets/images/compass_needle.png',
                             width: screenWidth * 0.8,
@@ -290,11 +283,11 @@ class _QiblaDirectionMediumScreenState extends State<QiblaDirectionMediumScreen>
                             fit: BoxFit.contain,
                           ),
                         ),
-                        // Kaaba icon at the needle tip
+                        // Kaaba icon (aligned with needle)
                         Transform.rotate(
-                          angle: (-(_deviceHeading + _qiblaDirection) * math.pi / 180), // Align with needle
+                          angle: ((-_deviceHeading + _qiblaDirection) * math.pi / 180),
                           child: Padding(
-                            padding: EdgeInsets.only(bottom: screenWidth * 0.05), // Adjust to position at middle of needle
+                            padding: EdgeInsets.only(bottom: screenWidth * 0.05),
                             child: Image.asset(
                               'assets/images/kaaba_icon.png',
                               width: screenWidth * 0.15,

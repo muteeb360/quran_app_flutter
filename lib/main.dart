@@ -122,9 +122,7 @@ class _hidayaState extends State<hidaya> {
         Locale('ar'),
       ],
 
-      // -----------------------
-      // FIXED THEME SECTION
-      // -----------------------
+//Theme Section
       theme: ThemeData(
         brightness: Brightness.light,
         textTheme: GoogleFonts.poppinsTextTheme(),

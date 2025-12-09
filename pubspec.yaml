@@ -41,8 +41,7 @@ dependencies:
   flutter_svg: ^2.0.10+1
   google_fonts: ^6.2.1
   geolocator: ^12.0.0
-  sensors_plus: ^6.1.1
-  flutter_compass: ^0.8.1
+  sensors_plus: ^7.0.0
   geocoding: ^3.0.0
   sqflite: ^2.4.2
   path_provider: ^2.1.5
@@ -60,6 +59,7 @@ dependencies:
   firebase_core: ^4.1.1
   cloud_firestore: ^6.0.2
   provider: ^6.1.5+1
+  compassx: ^1.0.1
 
 dev_dependencies:
   flutter_test:

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:async';
 import 'package:adhan_dart/adhan_dart.dart';
@@ -30,6 +31,7 @@ class _HomeMediumScreenLayoutState extends State<HomeMediumScreenLayout> {
   final FocusNode _focusNode = FocusNode();
   final TextEditingController _controller = TextEditingController();
   Color _iconColor = Colors.grey;
+  String _currentBackground = "assets/images/noon.png";
 
   String _currentTime = "12:38 pm";
   String _currentDate = "Fri 25-02-25";
@@ -56,6 +58,7 @@ class _HomeMediumScreenLayoutState extends State<HomeMediumScreenLayout> {
   @override
   void initState() {
     super.initState();
+    _currentBackground = "assets/images/noon.png";
     _focusNode.addListener(_onFocusChange);
     _controller.addListener(_onTextChange);
 
@@ -297,6 +300,18 @@ class _HomeMediumScreenLayoutState extends State<HomeMediumScreenLayout> {
       _currentPrayer = currentPrayer;
       _upcomingPrayer = upcomingPrayer;
       _upcomingPrayerTime = upcomingPrayerTime;
+
+      // ADD THIS: Update background based on upcoming prayer
+      final prayer = _currentPrayer.toLowerCase();
+      if (prayer.contains("fajr")) {
+        _currentBackground = "assets/images/dawn.png";
+      } else if (prayer.contains("dhuhr") || prayer.contains("asr")) {
+        _currentBackground = "assets/images/noon.png";
+      } else if (prayer.contains("maghrib") || prayer.contains("isha")) {
+        _currentBackground = "assets/images/night.png";
+      } else {
+        _currentBackground = "assets/images/noon.png"; // fallback
+      }
     });
   }
 
@@ -415,8 +430,17 @@ class _HomeMediumScreenLayoutState extends State<HomeMediumScreenLayout> {
       {'image': 'assets/images/Eid.png', 'text': localizations?.nabiNames},
     ];
 
+    Color getHomeTextColor() {
+      final prayer = _currentPrayer.toLowerCase();
+      if (prayer.contains("fajr") || prayer.contains("maghrib") || prayer.contains("isha")) {
+        return Colors.white;
+      }
+      return Colors.black;
+    }
+
     return Scaffold(
       extendBodyBehindAppBar: true,
+      resizeToAvoidBottomInset: false,
       appBar: AppBar(
         // actions: [
         //   LanguageSelector(),
@@ -424,7 +448,7 @@ class _HomeMediumScreenLayoutState extends State<HomeMediumScreenLayout> {
         title: Text(
           localizations!.home,
           style: GoogleFonts.poppins(
-            color: AppColors.textPrimary,
+            color: getHomeTextColor(),
             fontSize: 16,
             fontWeight: FontWeight.w700,
           ),
@@ -438,6 +462,7 @@ class _HomeMediumScreenLayoutState extends State<HomeMediumScreenLayout> {
       body: Stack(
         children: [
           SingleChildScrollView(
+            physics: const NeverScrollableScrollPhysics(),
             child: Column(
               children: [
                 SizedBox(height: screenHeight * 0.04),
@@ -448,7 +473,7 @@ class _HomeMediumScreenLayoutState extends State<HomeMediumScreenLayout> {
                       height: screenHeight * 0.25,
                       decoration: BoxDecoration(
                         image: DecorationImage(
-                          image: AssetImage('assets/images/noon.png'),
+                          image: AssetImage(_currentBackground),
                           fit: BoxFit.fill,
                         ),
                       ),
@@ -466,7 +491,7 @@ class _HomeMediumScreenLayoutState extends State<HomeMediumScreenLayout> {
                                   style: GoogleFonts.poppins(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w600,
-                                    color: AppColors.textPrimary,
+                                    color: getHomeTextColor(),
                                   ),
                                 ),
                                 Text(
@@ -475,7 +500,7 @@ class _HomeMediumScreenLayoutState extends State<HomeMediumScreenLayout> {
                                   style: GoogleFonts.poppins(
                                     fontSize: 24,
                                     fontWeight: FontWeight.bold,
-                                    color: AppColors.textPrimary,
+                                    color: getHomeTextColor(),
                                     height: 1,
                                   ),
                                 ),
@@ -484,7 +509,7 @@ class _HomeMediumScreenLayoutState extends State<HomeMediumScreenLayout> {
                                   style: GoogleFonts.poppins(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w600,
-                                    color: AppColors.textPrimary,
+                                    color: getHomeTextColor(),
                                   ),
                                 ),
                               ],
@@ -498,7 +523,7 @@ class _HomeMediumScreenLayoutState extends State<HomeMediumScreenLayout> {
                                   style: GoogleFonts.poppins(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w600,
-                                    color: AppColors.textPrimary,
+                                    color: getHomeTextColor(),
                                   ),
                                 ),
                                 if (_errorMessage != null)
@@ -520,7 +545,7 @@ class _HomeMediumScreenLayoutState extends State<HomeMediumScreenLayout> {
                                     style: GoogleFonts.poppins(
                                       fontSize: 24,
                                       fontWeight: FontWeight.bold,
-                                      color: AppColors.textPrimary,
+                                      color: getHomeTextColor(),
                                       height: 1,
                                     ),
                                   ),
@@ -530,7 +555,7 @@ class _HomeMediumScreenLayoutState extends State<HomeMediumScreenLayout> {
                                     style: GoogleFonts.poppins(
                                       fontSize: 13,
                                       fontWeight: FontWeight.w600,
-                                      color: AppColors.textPrimary,
+                                      color: getHomeTextColor(),
                                     ),
                                   ),
                                 ],
@@ -575,6 +600,7 @@ class _HomeMediumScreenLayoutState extends State<HomeMediumScreenLayout> {
                         ),
                       ),
                     ),
+                    SizedBox(height: MediaQuery.of(context).viewInsets.bottom),
                   ],
                 ),
                 Padding(
@@ -621,6 +647,7 @@ class _HomeMediumScreenLayoutState extends State<HomeMediumScreenLayout> {
                                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                                   ),
                                 ),
+                                SizedBox(height: MediaQuery.of(context).viewInsets.bottom),
                               ],
                             ),
                           ),
@@ -630,6 +657,7 @@ class _HomeMediumScreenLayoutState extends State<HomeMediumScreenLayout> {
                   ),
                 ),
                 SizedBox(height: screenHeight * 0.3),
+                SizedBox(height: MediaQuery.of(context).viewInsets.bottom),
               ],
             ),
           ),
@@ -699,6 +727,7 @@ class _HomeMediumScreenLayoutState extends State<HomeMediumScreenLayout> {
                             ),
                           ),
                         ),
+                        SizedBox(height: MediaQuery.of(context).viewInsets.bottom),
                       ],
                     ),
                   ),
