@@ -92,7 +92,7 @@ class _hidayaState extends State<hidaya> {
     final darkColorScheme = ColorScheme(
       brightness: Brightness.dark,
       primary: Color(0xFF3CCF78),          // Lighter emerald green
-      onPrimary: Colors.grey,
+      onPrimary: Colors.white,
       secondary: Color(0xFFE0C15A),        // Softer gold for contrast
       onSecondary: Colors.black,
       background: Color(0xFF1A1A1A),       // Deep onyx background
