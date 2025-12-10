@@ -249,7 +249,7 @@ class _PdfquranFirstscreenState extends State<PdfquranFirstscreen> {
         children: [
           Container(
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface,
+              color: Theme.of(context).colorScheme.surfaceVariant,
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
                 BoxShadow(

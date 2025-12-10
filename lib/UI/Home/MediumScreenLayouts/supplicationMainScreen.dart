@@ -97,7 +97,7 @@ class _SupplicationmainscreenState extends State<Supplicationmainscreen> {
                     return Card(
                       elevation: 4,
                       margin: EdgeInsets.only(bottom: screenHeight * 0.02),
-                      color: Theme.of(context).colorScheme.surface,
+                      color: Theme.of(context).colorScheme.surfaceVariant,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(15),
                       ),

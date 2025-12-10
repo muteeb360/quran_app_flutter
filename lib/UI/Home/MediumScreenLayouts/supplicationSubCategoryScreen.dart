@@ -88,6 +88,7 @@ class _SupplicationSubCategoryScreenState extends State<SupplicationSubCategoryS
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(15),
                   ),
+                  color: Theme.of(context).colorScheme.surfaceVariant,
                   child: Row(
                     children: [
                       Expanded(

@@ -86,6 +86,7 @@ class _SupplicationScreenState extends State<SupplicationScreen> {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(15),
                   ),
+                  color: Theme.of(context).colorScheme.surfaceVariant,
                   child: Row(
                     children: [
                       Expanded(

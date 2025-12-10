@@ -599,7 +599,7 @@ class _MediumPrayerTimesScreenState extends State<MediumPrayerTimesScreen> {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
                 ),
-                color: Theme.of(context).colorScheme.surface,
+                color: Theme.of(context).colorScheme.surfaceVariant,
                 elevation: 4,
                 margin: EdgeInsets.all(16),
                 child: Padding(
