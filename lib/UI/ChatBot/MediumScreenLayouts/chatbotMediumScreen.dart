@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_tts/flutter_tts.dart';
 import 'package:share_plus/share_plus.dart';
 import 'dart:convert';
 import 'dart:math' as math;
@@ -8,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../Utils/chat_service.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt; // Add this
 
 // Message model to store chat history
 class ChatMessage {
@@ -53,6 +55,11 @@ class _ChatbotMediumScreenState extends State<ChatbotMediumScreen>
   late AnimationController _fadeController;
   late AnimationController _slideController;
 
+  // Speech to text variables
+  final stt.SpeechToText _speech = stt.SpeechToText();
+  bool _isListening = false;
+  String _recognizedText = '';
+
   @override
   void initState() {
     super.initState();
@@ -65,6 +72,9 @@ class _ChatbotMediumScreenState extends State<ChatbotMediumScreen>
       vsync: this,
     );
 
+    // Initialize speech recognition
+    _initSpeechRecognition();
+
     // Load both UI history and service conversation history
     _loadChatHistory();
     widget.chatService.loadConversationHistory();
@@ -73,13 +83,103 @@ class _ChatbotMediumScreenState extends State<ChatbotMediumScreen>
     _fadeController.repeat();
   }
 
+// Initialize speech recognition
+  void _initSpeechRecognition() async {
+    bool available = await _speech.initialize(
+      onStatus: (status) {
+        print('Speech recognition status: $status');
+        setState(() {
+          _isListening = _speech.isListening;
+        });
+      },
+      onError: (error) {
+        print('Speech recognition error: $error');
+        setState(() {
+          _isListening = false;
+        });
+      },
+    );
+
+    if (available) {
+      print('Speech recognition is available');
+    } else {
+      print('Speech recognition is not available');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Speech recognition not available')),
+      );
+    }
+  }
+
   @override
   void dispose() {
     _fadeController.dispose();
     _slideController.dispose();
     _messageController.dispose();
     _scrollController.dispose();
+    _speech.stop(); // Stop speech recognition
+    _speech.cancel(); // Cancel any ongoing recognition
     super.dispose();
+  }
+
+  // Start listening to user's speech
+  void _startListening() async {
+    if (!_isListening) {
+      bool available = await _speech.initialize();
+
+      if (available) {
+        setState(() {
+          _isListening = true;
+          _recognizedText = '';
+        });
+
+        _speech.listen(
+          onResult: (result) {
+            setState(() {
+              _recognizedText = result.recognizedWords;
+              _messageController.text = _recognizedText;
+            });
+          },
+          listenFor: const Duration(seconds: 30),
+          pauseFor: const Duration(seconds: 5),
+          partialResults: true,
+          localeId: "en_US", // Set language to English
+          onSoundLevelChange: (level) {
+            // Optional: Add visual feedback for sound level
+          },
+        );
+      } else {
+        print("Speech recognition not available");
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Speech recognition not available')),
+        );
+      }
+    }
+  }
+
+// Stop listening
+  void _stopListening() {
+    if (_isListening) {
+      _speech.stop();
+      setState(() {
+        _isListening = false;
+      });
+
+      // If we have recognized text, send it automatically after a short delay
+      if (_recognizedText.isNotEmpty) {
+        Future.delayed(const Duration(milliseconds: 500), () {
+          _sendMessage();
+        });
+      }
+    }
+  }
+
+// Handle mic button tap
+  void _handleMicTap() {
+    if (_isListening) {
+      _stopListening();
+    } else {
+      _startListening();
+    }
   }
 
   // Load chat history from SharedPreferences
@@ -246,7 +346,7 @@ class _ChatbotMediumScreenState extends State<ChatbotMediumScreen>
               builder: (context) => AlertDialog(
                 title:  Text('Clear Chat History', style: TextStyle(color: Theme.of(context).colorScheme.onSurface),),
                 content:  Text(
-                    'This will clear all messages and conversation memory. Are you sure?',
+                  'This will clear all messages and conversation memory. Are you sure?',
                   style: TextStyle(color: Theme.of(context).colorScheme.onSurface,),
                 ),
                 actions: [
@@ -520,14 +620,14 @@ class _ChatbotMediumScreenState extends State<ChatbotMediumScreen>
               ),
 
               //if (message.isUser)  // Only allow deleting user's messages (optional)
-                ListTile(
-                  leading: const Icon(Icons.delete),
-                  title: const Text("Delete"),
-                  onTap: () {
-                    _deleteMessage(message);
-                    Navigator.pop(context);
-                  },
-                ),
+              ListTile(
+                leading: const Icon(Icons.delete),
+                title: const Text("Delete"),
+                onTap: () {
+                  _deleteMessage(message);
+                  Navigator.pop(context);
+                },
+              ),
             ],
           ),
         );
@@ -774,6 +874,9 @@ class _ChatbotMediumScreenState extends State<ChatbotMediumScreen>
   }
 
   Widget _buildInputArea() {
+    final bool showMicButton = _messageController.text.isEmpty || _isListening;
+    final bool showSendButton = _messageController.text.isNotEmpty && !_isListening;
+
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       curve: Curves.easeInOut,
@@ -803,48 +906,115 @@ class _ChatbotMediumScreenState extends State<ChatbotMediumScreen>
                   color: Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(25),
                   border: Border.all(
-                    color: const Color(0xFF2E7D32).withOpacity(0.2),
+                    color: _isListening
+                        ? const Color(0xFF2E7D32)
+                        : const Color(0xFF2E7D32).withOpacity(0.2),
+                    width: _isListening ? 2 : 1,
                   ),
                 ),
-                child: TextField(
-                  controller: _messageController,
-                  style: TextStyle(
-                      color: Theme.of(context).colorScheme.onSurface,
-                  ),
-                  decoration: const InputDecoration(
-                    hintText: 'Ask about Islam...',
-                    border: InputBorder.none,
-                    contentPadding: EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 12,
+                child: Stack(
+                  children: [
+                    TextField(
+                      controller: _messageController,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurface,
+                      ),
+                      decoration: InputDecoration(
+                        hintText: _isListening ? 'Listening...' : 'Ask about Islam...',
+                        hintStyle: TextStyle(
+                          color: _isListening
+                              ? const Color(0xFF2E7D32)
+                              : Colors.grey[600],
+                        ),
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 12,
+                        ),
+                        suffixIcon: _isListening
+                            ? Padding(
+                          padding: const EdgeInsets.only(right: 10),
+                          child: Icon(
+                            Icons.mic,
+                            color: const Color(0xFF2E7D32),
+                            size: 20,
+                          ),
+                        )
+                            : null,
+                      ),
+                      maxLines: null,
+                      textCapitalization: TextCapitalization.sentences,
+                      onSubmitted: (_) => _sendMessage(),
+                      onChanged: (text) {
+                        // Auto-scroll when typing
+                        if (_messages.isNotEmpty) {
+                          Future.delayed(const Duration(milliseconds: 100), () {
+                            _scrollToBottom();
+                          });
+                        }
+
+                        // Update UI when text changes
+                        setState(() {});
+                      },
                     ),
-                  ),
-                  maxLines: null,
-                  textCapitalization: TextCapitalization.sentences,
-                  onSubmitted: (_) => _sendMessage(),
-                  onChanged: (text) {
-                    // Auto-scroll when typing
-                    if (_messages.isNotEmpty) {
-                      Future.delayed(const Duration(milliseconds: 100), () {
-                        _scrollToBottom();
-                      });
-                    }
-                  },
+                    // Add listening animation overlay
+                    if (_isListening)
+                      Positioned(
+                        bottom: 0,
+                        left: 0,
+                        right: 0,
+                        child: Container(
+                          height: 3,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                const Color(0xFF2E7D32).withOpacity(0.3),
+                                const Color(0xFF2E7D32),
+                                const Color(0xFF2E7D32).withOpacity(0.3),
+                              ],
+                            ),
+                          ),
+                          child: const _ListeningAnimation(),
+                        ),
+                      ),
+                  ],
                 ),
               ),
             ),
             const SizedBox(width: 8),
-            Container(
-              decoration: const BoxDecoration(
-                color: Color(0xFF2E7D32),
+            // Dynamic Button
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              decoration: BoxDecoration(
+                color: _isListening
+                    ? Colors.red
+                    : const Color(0xFF2E7D32),
                 shape: BoxShape.circle,
+                boxShadow: _isListening
+                    ? [
+                  BoxShadow(
+                    color: Colors.red.withOpacity(0.5),
+                    blurRadius: 10,
+                    spreadRadius: 2,
+                  ),
+                ]
+                    : null,
               ),
               child: IconButton(
-                onPressed: _isTyping ? null : _sendMessage,
-                icon: Icon(
-                  _isTyping ? Icons.hourglass_empty : Icons.send,
-                  color: Colors.white,
-                ),
+                onPressed: () {
+                  if (_isListening) {
+                    // Stop listening
+                    _stopListening();
+                  } else if (_messageController.text.isNotEmpty) {
+                    // Send message
+                    _sendMessage();
+                  } else {
+                    // Start listening
+                    _startListening();
+                  }
+                },
+                icon: _buildDynamicIcon(),
+                color: Colors.white,
               ),
             ),
           ],
@@ -852,6 +1022,19 @@ class _ChatbotMediumScreenState extends State<ChatbotMediumScreen>
       ),
     );
   }
+
+// Helper method to build the dynamic icon
+  Widget _buildDynamicIcon() {
+    if (_isListening) {
+      return const Icon(Icons.stop, size: 20);
+    } else if (_messageController.text.isNotEmpty) {
+      return const Icon(Icons.send, size: 20);
+    } else {
+      return const Icon(Icons.mic, size: 20);
+    }
+  }
+
+
 
   String _formatTime(DateTime time) {
     final now = DateTime.now();
@@ -867,12 +1050,57 @@ class _ChatbotMediumScreenState extends State<ChatbotMediumScreen>
       return 'Just now';
     }
   }
+
 }
 
-// Don't forget to add these dependencies to your pubspec.yaml:
-// shared_preferences: ^2.0.15
-// flutter_markdown: ^0.6.18
-// url_launcher: ^6.2.1
+// Add this widget class inside the same file (outside _ChatbotMediumScreenState)
+class _ListeningAnimation extends StatefulWidget {
+  const _ListeningAnimation();
 
-// Usage:
-// IslamicChatScreen(chatService: EnhancedChatService())
+  @override
+  _ListeningAnimationState createState() => _ListeningAnimationState();
+}
+
+class _ListeningAnimationState extends State<_ListeningAnimation>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 1000),
+      vsync: this,
+    )..repeat(reverse: true);
+
+    _animation = Tween<double>(begin: 0.1, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: Curves.easeInOut,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _animation,
+      builder: (context, child) {
+        return Container(
+          margin: EdgeInsets.symmetric(horizontal: _animation.value * 20),
+          decoration: BoxDecoration(
+            color: const Color(0xFF2E7D32).withOpacity(_animation.value),
+            borderRadius: BorderRadius.circular(2),
+          ),
+        );
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+}

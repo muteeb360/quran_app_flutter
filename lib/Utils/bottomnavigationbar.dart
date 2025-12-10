@@ -14,7 +14,7 @@ class CustomBottomNavigation extends StatelessWidget {
   final List<Map<String, dynamic>> _navItems = [
     {'icon': Icons.home_filled, 'label': 'Home'},
     {'icon': CustomICons.quran__1_, 'label': 'Quran'},
-    {'icon': Icons.chat, 'label': 'Therapist'},
+    {'icon': Icons.chat, 'label': 'Chat'},
     {'icon': Icons.settings, 'label': 'Settings'}, // Changed duplicate 'Profile' to 'Book'
   ];
 
