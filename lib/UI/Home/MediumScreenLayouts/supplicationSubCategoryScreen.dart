@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hidaya_app/UI/Home/MediumScreenLayouts/supplicationMainScreen.dart';
-import '../../../Utils/colors.dart';
 import 'package:hidaya_app/Utils/DatabaseHelper.dart';
 
 class SupplicationSubCategoryScreen extends StatefulWidget {

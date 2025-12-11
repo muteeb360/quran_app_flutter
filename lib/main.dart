@@ -1,12 +1,13 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:hidaya_app/UI/BottomNavLogicImplementation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'UI/test.dart';
 import 'UI/theme_provider.dart';
-import 'UI/theme.dart';
+import 'Utils/noti_service.dart';
 import 'firebase_options.dart';
 import 'l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
@@ -16,6 +17,10 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: "apikey.env");
+  // Request permissions
+  await Permission.scheduleExactAlarm.request();
+  await Permission.notification.request();
+  await NotificationService().initNotification();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
@@ -34,10 +39,10 @@ class hidaya extends StatefulWidget {
   State<hidaya> createState() => _hidayaState();
 
   // Static method to change locale from anywhere in the app
-  static void setLocale(BuildContext context, Locale locale) {
-    _hidayaState? state = context.findAncestorStateOfType<_hidayaState>();
-    state?.setLocale(locale);
-  }
+  // static void setLocale(BuildContext context, Locale locale) {
+  //   _hidayaState? state = context.findAncestorStateOfType<_hidayaState>();
+  //   state?.setLocale(locale);
+  // }
 }
 
 class _hidayaState extends State<hidaya> {
@@ -47,31 +52,63 @@ class _hidayaState extends State<hidaya> {
   @override
   void initState() {
     super.initState();
-    _loadSavedLocale();
+    //_rescheduleNotifications();  // Add this
+    //_loadSavedLocale();
   }
+
+  // Future<void> _rescheduleNotifications() async {
+  //   final notiService = NotificationService();
+  //   final now = DateTime.now();
+  //
+  //   // Schedule prayer times (2 minutes in future for testing)
+  //   final testTime = now.add(const Duration(seconds: 10));
+  //
+  //   final prayerTimes = {
+  //     'Fajr': testTime,
+  //     'Dhuhr': testTime.add(const Duration(minutes: 2)),
+  //     'Asr': testTime.add(const Duration(minutes: 6)),
+  //     'Maghrib': testTime.add(const Duration(minutes: 9)),
+  //     'Isha': testTime.add(const Duration(minutes: 12)),
+  //   };
+  //
+  //   await notiService.scheduleDailyPrayerTimes(prayerTimes: prayerTimes);
+  //
+  //   // Schedule verse of the day for 8:00 AM
+  //   await notiService.scheduleDailyVerse(
+  //     verseText: 'Alif-Laam-Meem. This is the Book...',
+  //     surahName: 'Al-Baqarah',
+  //     verseNumber: 1,
+  //     hour: 8,
+  //     minute: 0,
+  //     id: 100,
+  //   );
+  //
+  //   print('Notifications scheduled');
+  // }
 
   // Load saved locale from SharedPreferences
-  Future<void> _loadSavedLocale() async {
-    final prefs = await SharedPreferences.getInstance();
-    final savedLocale = prefs.getString('locale') ?? 'en';
-    setState(() {
-      _locale = Locale(savedLocale);
-    });
-  }
+  // Future<void> _loadSavedLocale() async {
+  //   final prefs = await SharedPreferences.getInstance();
+  //   final savedLocale = prefs.getString('locale') ?? 'en';
+  //   setState(() {
+  //     _locale = Locale(savedLocale);
+  //   });
+  // }
 
-  // Change locale and save to SharedPreferences
-  Future<void> setLocale(Locale locale) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('locale', locale.languageCode);
-    setState(() {
-      _locale = locale;
-    });
-  }
+  // // Change locale and save to SharedPreferences
+  // Future<void> setLocale(Locale locale) async {
+  //   final prefs = await SharedPreferences.getInstance();
+  //   await prefs.setString('locale', locale.languageCode);
+  //   setState(() {
+  //     _locale = locale;
+  //   });
+  // }
 
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
-
+    final size = MediaQuery.of(context).size;
+    print('My phone size: ${size.width} x ${size.height}');
 
     final lightColorScheme = ColorScheme(
       brightness: Brightness.light,
@@ -105,44 +142,52 @@ class _hidayaState extends State<hidaya> {
       onError: Colors.black,
     );
 
-    return MaterialApp(
-      navigatorKey: navigatorKey,
-      navigatorObservers: [routeObserver],
-      debugShowCheckedModeBanner: false,
-      locale: _locale,
-      localizationsDelegates: const [
-        AppLocalizations.delegate,
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
-      supportedLocales: const [
-        Locale('en'),
-        Locale('ur'),
-        Locale('ar'),
-      ],
+    return ScreenUtilInit(
+      designSize: const Size(360, 690), // Your design dimensions
+      minTextAdapt: true, // Better text scaling
+      splitScreenMode: true, // Support split screen
+      builder: (_, child) {
+        return MaterialApp(
+          navigatorKey: navigatorKey,
+          navigatorObservers: [routeObserver],
+          debugShowCheckedModeBanner: false,
+          locale: _locale,
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: const [
+            Locale('en'),
+            Locale('ur'),
+            Locale('ar'),
+          ],
 
-//Theme Section
-      theme: ThemeData(
-        brightness: Brightness.light,
-        textTheme: GoogleFonts.poppinsTextTheme(),
-        colorScheme: lightColorScheme,
-        useMaterial3: true,
-      ),
+          //Theme Section
+          theme: ThemeData(
+            brightness: Brightness.light,
+            textTheme: GoogleFonts.poppinsTextTheme(),
+            colorScheme: lightColorScheme,
+            useMaterial3: true,
+          ),
 
-      darkTheme: ThemeData(
-        brightness: Brightness.dark,
-        textTheme: GoogleFonts.poppinsTextTheme(),
-        colorScheme: darkColorScheme,
-        useMaterial3: true,
-      ),
+          darkTheme: ThemeData(
+            brightness: Brightness.dark,
+            textTheme: GoogleFonts.poppinsTextTheme(),
+            colorScheme: darkColorScheme,
+            useMaterial3: true,
+          ),
 
-      themeMode: themeProvider.themeMode, // 👈 works with switch
+          themeMode: themeProvider.themeMode,
+          // 👈 works with switch
 
-      initialRoute: '/',
-      routes: {
-        '/': (context) => homescreen(),
-      },
+          initialRoute: '/',
+          routes: {
+            '/': (context) => testing(),
+          },
+        );
+      }
     );
   }
 }

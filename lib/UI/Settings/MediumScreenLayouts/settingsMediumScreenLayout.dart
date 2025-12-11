@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hidaya_app/UI/Settings/MediumScreenLayouts/privacyandtermsMediumScreen.dart';
 import 'package:provider/provider.dart';
-
 import '../../theme_provider.dart';
 import 'feedbackMediumScreen.dart';
 

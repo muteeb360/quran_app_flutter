@@ -1,4 +1,3 @@
-// lib/repository/quran_repository.dart
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';

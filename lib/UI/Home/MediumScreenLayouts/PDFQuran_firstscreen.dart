@@ -1,14 +1,11 @@
 import 'dart:async';
 import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_pdfview/flutter_pdfview.dart';
-
-import '../../../Utils/colors.dart'; // Ensure this file exists and defines AppColors.background
 
 class PdfquranFirstscreen extends StatefulWidget {
   const PdfquranFirstscreen({super.key});

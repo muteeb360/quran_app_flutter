@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:io' as io;
 import 'dart:math';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart' show rootBundle, ByteData;
 import 'package:path/path.dart';

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../../Utils/colors.dart';
 import 'package:hidaya_app/Utils/DatabaseHelper.dart';
 import 'supplicationSubCategoryScreen.dart';
 

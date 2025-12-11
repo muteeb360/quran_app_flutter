@@ -1,138 +1,50 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:hidaya_app/Utils/noti_service.dart';
 
-import '../Utils/colors.dart';
+class testing extends StatelessWidget {
+  const testing({super.key});
 
-class SupplicationScreen extends StatefulWidget {
-  const SupplicationScreen({super.key});
+  Future<void> _rescheduleNotifications() async {
+    final notiService = NotificationService();
+    final now = DateTime.now();
 
-  @override
-  State<SupplicationScreen> createState() => _SupplicationScreenState();
-}
+    // Schedule prayer times (2 minutes in future for testing)
+    final testTime = now.add(const Duration(seconds: 10));
 
-class _SupplicationScreenState extends State<SupplicationScreen> {
-  // List of dummy data for 9 cards
-  final List<Map<String, dynamic>> supplications = List.generate(
-    9,
-        (index) => {
-      'number': (index + 1).toString().padLeft(2, '0'),
-      'text1': 'توبہ و استغفار',
-      'text2': '6 دعائیں',
-    },
-  );
+    final prayerTimes = {
+      'Fajr': testTime,
+      'Dhuhr': testTime.add(const Duration(seconds: 40)),
+      'Asr': testTime.add(const Duration(minutes: 1)),
+      'Maghrib': testTime.add(const Duration(minutes: 2)),
+      'Isha': testTime.add(const Duration(minutes: 3)),
+    };
+
+    await notiService.scheduleDailyPrayerTimes(prayerTimes: prayerTimes);
+
+    // Schedule verse of the day for 8:00 AM
+    await notiService.scheduleDailyVerse(
+      verseText: 'Alif-Laam-Meem. This is the Book...',
+      surahName: 'Al-Baqarah',
+      verseNumber: 1,
+      hour: 7,
+      minute: 10,
+      id: 100,
+    );
+
+    print('Notifications scheduled');
+  }
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final screenHeight = MediaQuery.of(context).size.height;
-
-    return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios, color: Colors.white),
-          onPressed: () {
-            Navigator.pop(context);
-          },
-        ),
-        title: Text(
-          'Supplication',
-          style: GoogleFonts.poppins(
-            color: Colors.white,
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Islamic App')),
+        body: Center(
+          child: ElevatedButton(
+            onPressed: (){ _rescheduleNotifications();},
+            child: const Text('Test Notifications'),
           ),
         ),
-        centerTitle: true,
-        flexibleSpace: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                Color(0xFF44C17B), // Start color
-                Color(0xFF205B3A), // End color
-              ],
-              begin: Alignment.centerLeft,
-              end: Alignment.centerRight,
-            ),
-          ),
-        ),
-        backgroundColor: Colors.transparent,
-      ),
-      backgroundColor: AppColors.background,
-      body: ListView.builder(
-        padding: EdgeInsets.symmetric(vertical: screenHeight * 0.02, horizontal: screenWidth * 0.04),
-        itemCount: supplications.length,
-        itemBuilder: (context, index) {
-          return Card(
-            elevation: 4,
-            margin: EdgeInsets.only(bottom: screenHeight * 0.02),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(15),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  flex: 3,
-                  child: Stack(
-                    children: [
-                      //image
-                      ClipRRect(
-                        borderRadius: BorderRadius.horizontal(left: Radius.circular(15)),
-                        child: Image.asset(
-                          'assets/images/prayer_bg.png',
-                          width: screenWidth * 0.7,
-                          height: screenHeight * 0.15,
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-                      //texts
-                      Positioned.fill(
-                        child: Padding(
-                          padding: EdgeInsets.only(right: screenWidth*0.03),
-                          child: Column(
-                            mainAxisAlignment:MainAxisAlignment.center,
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Text(
-                                  supplications[index]['text1'],
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.black,
-                                  ),
-                                ),
-                                Text(
-                                  supplications[index]['text2'],
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w400,
-                                    color: Colors.black,
-                                  ),
-                                ),
-                              ],
-                            ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: Column(
-                    children: [
-                      Text(
-                        supplications[index]['number'],
-                        style: GoogleFonts.poppins(
-                          fontSize: 32,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF44C17B), // Green color matching your app theme
-                        ),
-                      ),
-                    ],
-                  ),
-                )
-              ],
-            ),
-          );
-        },
       ),
     );
   }

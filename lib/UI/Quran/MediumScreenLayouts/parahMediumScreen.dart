@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hidaya_app/repository/quran_repository.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
-import 'package:sqflite/sqflite.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../Utils/colors.dart';
 import '../../../Utils/QuranData.dart';

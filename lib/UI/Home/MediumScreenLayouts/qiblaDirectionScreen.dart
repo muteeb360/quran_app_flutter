@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:compassx/compassx.dart';  // ← NEW: Simple & accurate
+import 'package:compassx/compassx.dart';
 
 class QiblaDirectionMediumScreen extends StatefulWidget {
   @override

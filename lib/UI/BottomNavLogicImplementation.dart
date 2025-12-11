@@ -1,16 +1,11 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:hidaya_app/UI/ChatBot/MediumScreenLayouts/chatbotMediumScreen.dart';
 import 'package:hidaya_app/UI/Quran/MediumScreenLayouts/quranMediumScreenLayout.dart';
-import 'package:hidaya_app/UI/Home/MediumScreenLayouts/prayerTimesScreen.dart';
-import 'package:hidaya_app/UI/test.dart';
 import '../Utils/bottomnavigationbar.dart';
 import '../Utils/chat_service.dart';
-import '../Utils/colors.dart';
 import 'Home/MediumScreenLayouts/homeMediumScreenLayout.dart';
-import 'Quran/MediumScreenLayouts/surahMediumScreen.dart';
 import 'Settings/MediumScreenLayouts/settingsMediumScreenLayout.dart';
 
 class homescreen extends StatefulWidget {

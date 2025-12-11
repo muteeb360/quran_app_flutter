@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'dart:async';
 import 'package:adhan_dart/adhan_dart.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
 import '../../../Utils/colors.dart';
 import '../../../Utils/location_manager.dart';
 
